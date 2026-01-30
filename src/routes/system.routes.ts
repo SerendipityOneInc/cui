@@ -8,9 +8,14 @@ import { getAvailableCommands } from '@/services/commands-service.js';
 import { ConfigService } from '@/services/config-service.js';
 import { execSync } from 'child_process';
 
+export interface SystemRoutesOptions {
+  skipAuthToken?: boolean;
+}
+
 export function createSystemRoutes(
   processManager: ClaudeProcessManager,
-  historyReader: ClaudeHistoryReader
+  historyReader: ClaudeHistoryReader,
+  options?: SystemRoutesOptions
 ): Router {
   const router = Router();
   const logger = createLogger('SystemRoutes');
@@ -18,6 +23,11 @@ export function createSystemRoutes(
   // Health check
   router.get('/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  // Auth config - tells frontend whether authentication is required
+  router.get('/auth-config', (req, res) => {
+    res.json({ authRequired: !options?.skipAuthToken });
   });
 
   // Hello endpoint

@@ -1,60 +1,102 @@
 import { useEffect } from 'react';
 
-const AUTH_COOKIE_NAME = 'cui-auth-token';
+const AUTH_STORAGE_KEY = 'cui-auth-token';
 
 /**
- * Get auth token from cookie
+ * Validate token format (32 character hex string)
+ */
+function isValidToken(token: string): boolean {
+  return token.length === 32 && /^[a-f0-9]+$/.test(token);
+}
+
+/**
+ * Get auth token from sessionStorage
  */
 export function getAuthToken(): string | null {
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === AUTH_COOKIE_NAME) {
-      return decodeURIComponent(value);
-    }
+  try {
+    return sessionStorage.getItem(AUTH_STORAGE_KEY);
+  } catch {
+    // sessionStorage may not be available in some contexts
+    return null;
   }
+}
+
+/**
+ * Set auth token in sessionStorage
+ */
+export function setAuthToken(token: string): void {
+  try {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, token);
+  } catch {
+    console.warn('Failed to store auth token in sessionStorage');
+  }
+}
+
+/**
+ * Clear auth token from sessionStorage
+ */
+export function clearAuthToken(): void {
+  try {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // Ignore errors
+  }
+}
+
+/**
+ * Extract token from URL (supports both fragment and query parameter)
+ * Priority: fragment (#token=xxx) > query parameter (?token=xxx)
+ */
+function extractTokenFromUrl(): string | null {
+  // 1. Check fragment first (more secure, preferred)
+  const fragment = window.location.hash;
+  if (fragment.startsWith('#token=')) {
+    const token = fragment.substring(7); // Remove '#token='
+    if (isValidToken(token)) {
+      return token;
+    }
+    console.warn('Invalid token format in URL fragment');
+  }
+
+  // 2. Check query parameter (useful for programmatic access)
+  const params = new URLSearchParams(window.location.search);
+  const queryToken = params.get('token');
+  if (queryToken) {
+    if (isValidToken(queryToken)) {
+      return queryToken;
+    }
+    console.warn('Invalid token format in URL query parameter');
+  }
+
   return null;
 }
 
 /**
- * Set auth token in cookie with security flags
+ * Clear token from URL (both fragment and query parameter)
  */
-export function setAuthToken(token: string): void {
-  const expires = new Date();
-  expires.setDate(expires.getDate() + 7); // 7 days expiration
-  
-  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
-}
+function clearTokenFromUrl(): void {
+  const url = new URL(window.location.href);
+  let needsUpdate = false;
 
-/**
- * Extract token from URL fragment and store in cookie
- * Format: #token=xxxxx
- */
-function extractTokenFromFragment(): string | null {
-  const fragment = window.location.hash;
-  if (!fragment.startsWith('#token=')) {
-    return null;
+  // Clear fragment if it contains token
+  if (url.hash.startsWith('#token=')) {
+    url.hash = '';
+    needsUpdate = true;
   }
-  
-  const token = fragment.substring(7); // Remove '#token='
-  if (token.length !== 32 || !/^[a-f0-9]+$/.test(token)) {
-    console.warn('Invalid token format in URL fragment');
-    return null;
-  }
-  
-  return token;
-}
 
-/**
- * Clear URL fragment
- */
-function clearFragment(): void {
-  if (window.history && window.history.replaceState) {
-    // Remove fragment without affecting browser history
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  } else {
-    // Fallback for older browsers
-    window.location.hash = '';
+  // Clear query parameter if it contains token
+  if (url.searchParams.has('token')) {
+    url.searchParams.delete('token');
+    needsUpdate = true;
+  }
+
+  if (needsUpdate && window.history && window.history.replaceState) {
+    // Build clean URL
+    let cleanUrl = url.pathname;
+    if (url.searchParams.toString()) {
+      cleanUrl += '?' + url.searchParams.toString();
+    }
+    window.history.replaceState(null, '', cleanUrl);
   }
 }
 
@@ -63,16 +105,16 @@ function clearFragment(): void {
  */
 export function useAuth(): void {
   useEffect(() => {
-    // Check if token exists in URL fragment
-    const fragmentToken = extractTokenFromFragment();
-    
-    if (fragmentToken) {
-      // Store token in cookie
-      setAuthToken(fragmentToken);
-      
-      // Clear fragment from URL
-      clearFragment();
-      
+    // Check if token exists in URL
+    const urlToken = extractTokenFromUrl();
+
+    if (urlToken) {
+      // Store token in sessionStorage
+      setAuthToken(urlToken);
+
+      // Clear token from URL for security
+      clearTokenFromUrl();
+
       console.log('Authentication token stored successfully');
     }
   }, []);
