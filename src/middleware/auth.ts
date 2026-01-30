@@ -81,7 +81,32 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   authMiddlewareImpl(req, res, next);
 }
 
+// Paths that should bypass authentication
+const AUTH_BYPASS_PATHS = [
+  '/system/auth-config',
+  '/system/health',
+  '/system/hello',
+];
+
+function shouldBypassAuth(req: Request): boolean {
+  // Check both req.path (relative to mount) and req.originalUrl (full path)
+  const pathToCheck = req.path;
+  const originalUrl = req.originalUrl;
+
+  return AUTH_BYPASS_PATHS.some(bypassPath =>
+    pathToCheck === bypassPath ||
+    pathToCheck.startsWith(bypassPath) ||
+    originalUrl.includes(bypassPath)
+  );
+}
+
 function authMiddlewareImpl(req: Request, res: Response, next: NextFunction, tokenOverride?: string): void {
+  // Skip auth for bypassed paths
+  if (shouldBypassAuth(req)) {
+    next();
+    return;
+  }
+
   // Skip auth in test environment unless explicitly enabled for auth tests
   if (process.env.NODE_ENV === 'test' && !process.env.ENABLE_AUTH_IN_TESTS) {
     next();

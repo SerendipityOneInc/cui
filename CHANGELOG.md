@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3-srp.2] - 2026-01-30
+
+### Fixed
+
+- **Fix /api/system/auth-config endpoint returning Unauthorized**: The auth-config endpoint was incorrectly requiring authentication. Added bypass paths in auth middleware to allow unauthenticated access to system endpoints (`/system/auth-config`, `/system/health`, `/system/hello`).
+
 ## [0.6.3-srp.1] - 2026-01-30
 
 ### Fixed
