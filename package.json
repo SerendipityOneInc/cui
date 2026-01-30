@@ -50,7 +50,7 @@
     "test:ui": "NODE_ENV=test vitest --ui",
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
