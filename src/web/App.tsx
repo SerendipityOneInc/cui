@@ -6,34 +6,29 @@ import Login from './components/Login/Login';
 import { useAuth, getAuthToken, setAuthToken } from './hooks/useAuth';
 
 function App() {
-  const [authRequired, setAuthRequired] = useState<boolean | null>(null);
+  // Default to requiring auth (same as original behavior)
+  // Only set to false if server explicitly says auth is not required
+  const [authRequired, setAuthRequired] = useState(true);
 
   // Check server auth configuration on mount
   useEffect(() => {
     fetch('/api/system/auth-config')
       .then(res => res.json())
       .then(data => {
-        setAuthRequired(data.authRequired);
+        // Only update if auth is NOT required (skip-auth-token mode)
+        if (!data.authRequired) {
+          setAuthRequired(false);
+        }
       })
       .catch(() => {
-        // Default to requiring auth if we can't reach the server
-        setAuthRequired(true);
+        // Keep default (auth required) if we can't reach the server
       });
   }, []);
 
   // Handle auth token extraction from URL
   useAuth();
 
-  // Show loading while checking auth config
-  if (authRequired === null) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-neutral-900">
-        <div className="text-neutral-500 dark:text-neutral-400">Loading...</div>
-      </div>
-    );
-  }
-
-  // If auth is not required, skip login check
+  // If auth is not required (skip-auth-token mode), skip login check
   if (!authRequired) {
     return (
       <Router
