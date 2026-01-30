@@ -1,0 +1,1 @@
+{"version":3,"file":"cli-parser.d.ts","sourceRoot":"","sources":["../src/cli-parser.ts"],"names":[],"mappings":"AAEA,MAAM,WAAW,SAAS;IACxB,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,KAAK,CAAC,EAAE,MAAM,CAAC;IACf,aAAa,CAAC,EAAE,OAAO,CAAC;CACzB;AAED;;GAEG;AACH,wBAAgB,SAAS,CAAC,IAAI,EAAE,MAAM,EAAE,GAAG,SAAS,CAsDnD"}

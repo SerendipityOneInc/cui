@@ -3,7 +3,7 @@ node_modules/
 *.lock
 
 # Build outputs
-dist/
+# Note: dist/ is NOT ignored - needed for npm install from GitHub
 build/
 *.tsbuildinfo
 # Exclude React build output from backend
