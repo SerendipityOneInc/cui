@@ -28,6 +28,8 @@ describe('Auth Middleware', () => {
     req = {
       headers: {},
       ip: '127.0.0.1',
+      path: '/api/test',
+      originalUrl: '/api/test',
       connection: { remoteAddress: '127.0.0.1' },
     } as Partial<Request>;
     
