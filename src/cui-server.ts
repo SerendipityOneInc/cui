@@ -452,8 +452,9 @@ export class CUIServer {
 
   private setupRoutes(): void {
     // System routes (includes health check) - before auth
-    this.app.use('/api/system', createSystemRoutes(this.processManager, this.historyReader));
-    this.app.use('/', createSystemRoutes(this.processManager, this.historyReader)); // For /health at root
+    const systemRoutesOptions = { skipAuthToken: this.configOverrides?.skipAuthToken };
+    this.app.use('/api/system', createSystemRoutes(this.processManager, this.historyReader, systemRoutesOptions));
+    this.app.use('/', createSystemRoutes(this.processManager, this.historyReader, systemRoutesOptions)); // For /health at root
     
     // Permission routes - before auth (needed for MCP server communication)
     this.app.use('/api/permissions', createPermissionRoutes(this.permissionTracker));
