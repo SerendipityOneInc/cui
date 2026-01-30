@@ -7,7 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Skip build/release for patch tags like v0.6.4-srp.3 (only tag, no build)
+  # Build/release runs for tags like v0.6.4-srp or workflow_dispatch
   quality:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-srp.')
     uses: ./.github/workflows/quality.yml
     with:
       node-version: '20.x'
