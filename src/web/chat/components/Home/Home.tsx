@@ -93,9 +93,10 @@ export function Home() {
   }, [loadConversations, activeTab]);
 
   // Get the most recent working directory from conversations
-  const recentWorkingDirectory = conversations.length > 0 
-    ? conversations[0].projectPath 
-    : undefined;
+  // Default to /workspace when no conversations exist
+  const recentWorkingDirectory = conversations.length > 0
+    ? conversations[0].projectPath
+    : '/workspace';
 
   const handleComposerSubmit = async (text: string, workingDirectory: string, model: string, permissionMode: string) => {
     setIsSubmitting(true);
