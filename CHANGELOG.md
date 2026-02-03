@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.6-srp] - 2026-02-03
+
+### Changed
+
+- **Upgrade @anthropic-ai/claude-code to 2.x**: Updated from `^1.0.70` to `^2.1.29` to use the latest Claude CLI features.
+
+### Fixed
+
+- **Support Claude CLI 2.x hook messages**: Fixed startup error when using Claude CLI 2.x which emits `hook_started`, `hook_completed`, and `hook_response` system messages before `init`. The process manager now skips these hook-related messages while waiting for the system init message.
+
+### Added
+
+- **SystemHookMessage type**: Added new type definition for hook-related system messages introduced in Claude CLI 2.x.
+
 ## [0.6.3-srp.2] - 2026-01-30
 
 ### Fixed

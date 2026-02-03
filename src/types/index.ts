@@ -56,6 +56,13 @@ export interface SystemInitMessage extends StreamMessage {
   apiKeySource: string;
 }
 
+// Hook-related system messages (introduced in Claude CLI 2.x)
+export interface SystemHookMessage extends StreamMessage {
+  type: 'system';
+  subtype: 'hook_started' | 'hook_completed' | 'hook_response';
+  hook_name?: string;
+}
+
 export interface AssistantStreamMessage extends StreamMessage {
   type: 'assistant';
   message: Anthropic.Message;
@@ -181,12 +188,13 @@ export interface SystemStatusResponse {
 }
 
 // Stream event types
-export type StreamEvent = 
+export type StreamEvent =
   | { type: 'connected'; streaming_id: string; timestamp: string }
   | { type: 'permission_request'; data: PermissionRequest; streamingId: string; timestamp: string }
   | { type: 'error'; error: string; streamingId: string; timestamp: string }
   | { type: 'closed'; streamingId: string; timestamp: string }
   | SystemInitMessage
+  | SystemHookMessage
   | AssistantStreamMessage
   | UserStreamMessage
   | ResultStreamMessage;
