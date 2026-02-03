@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 版本概览
+
+| 版本 | 日期 | 主要变更 |
+|------|------|----------|
+| 0.6.6-srp | 2026-02-03 | 升级 claude-code 到 2.x，支持 hook messages |
+| 0.6.5-srp | 2026-02-02 | 容器环境默认 workspace 设为 /workspace |
+| 0.6.4-srp | 2026-01-30 | dist 文件夹支持 GitHub 直接安装，CI 优化 |
+| 0.6.3-srp.2 | 2026-01-30 | 修复 auth-config 端点认证问题 |
+| 0.6.3-srp.1 | 2026-01-30 | skip-auth-token 前后端统一，token 存储改用 sessionStorage |
+| 0.6.3-srp | 2026-01-30 | SRP 分支初始版本，基于上游 v0.6.3 |
+
 ## [0.6.6-srp] - 2026-02-03
 
 ### Changed
