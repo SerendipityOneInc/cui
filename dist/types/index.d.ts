@@ -49,6 +49,11 @@ export interface SystemInitMessage extends StreamMessage {
     permissionMode: string;
     apiKeySource: string;
 }
+export interface SystemHookMessage extends StreamMessage {
+    type: 'system';
+    subtype: 'hook_started' | 'hook_completed' | 'hook_response';
+    hook_name?: string;
+}
 export interface AssistantStreamMessage extends StreamMessage {
     type: 'assistant';
     message: Anthropic.Message;
@@ -176,7 +181,7 @@ export type StreamEvent = {
     type: 'closed';
     streamingId: string;
     timestamp: string;
-} | SystemInitMessage | AssistantStreamMessage | UserStreamMessage | ResultStreamMessage;
+} | SystemInitMessage | SystemHookMessage | AssistantStreamMessage | UserStreamMessage | ResultStreamMessage;
 export declare class CUIError extends Error {
     code: string;
     statusCode: number;

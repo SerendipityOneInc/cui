@@ -221,7 +221,8 @@ export class ClaudeProcessManager extends EventEmitter {
         return new Promise((resolve, reject) => {
             let isResolved = false;
             let stderrOutput = '';
-            // Set up timeout (1 minute)
+            // Set up timeout (configurable, default 2 minutes for plugin cold start)
+            const initTimeoutMs = parseInt(process.env.CUI_SYSTEM_INIT_TIMEOUT_MS || '120000', 10);
             const timeout = setTimeout(() => {
                 if (!isResolved) {
                     isResolved = true;
@@ -237,7 +238,7 @@ export class ClaudeProcessManager extends EventEmitter {
                     }
                     reject(new CUIError('SYSTEM_INIT_TIMEOUT', errorMessage, 500));
                 }
-            }, 60000);
+            }, initTimeoutMs);
             // Cleanup function to remove all listeners
             const cleanup = () => {
                 clearTimeout(timeout);
@@ -291,7 +292,7 @@ export class ClaudeProcessManager extends EventEmitter {
                     totalStderrLength: stderrOutput.length
                 });
             };
-            // Listen for the first claude-message event for this streamingId
+            // Listen for the claude-message events until we receive system/init
             const messageHandler = ({ streamingId: msgStreamingId, message }) => {
                 if (msgStreamingId !== streamingId) {
                     return; // Not for our session
@@ -299,24 +300,35 @@ export class ClaudeProcessManager extends EventEmitter {
                 if (isResolved) {
                     return; // Already resolved
                 }
-                isResolved = true;
-                cleanup();
-                this.logger.debug('Received first message from Claude CLI', {
+                const messageSubtype = 'subtype' in message ? message.subtype : undefined;
+                this.logger.debug('Received message from Claude CLI during init wait', {
                     streamingId,
                     messageType: message?.type,
-                    messageSubtype: 'subtype' in message ? message.subtype : undefined,
+                    messageSubtype,
                     hasSessionId: 'session_id' in message ? !!message.session_id : false
                 });
-                // Validate that the first message is a system init message
-                if (!message || message.type !== 'system' || !('subtype' in message) || message.subtype !== 'init') {
-                    this.logger.error('First message is not system init', {
+                // Skip hook-related messages that may come before system/init
+                // New versions of Claude CLI (2.x) emit hook_started/hook_completed/hook_response before init
+                const hookSubtypes = ['hook_started', 'hook_completed', 'hook_response'];
+                if (message?.type === 'system' && hookSubtypes.includes(messageSubtype)) {
+                    this.logger.debug('Skipping hook message, waiting for system/init', {
+                        streamingId,
+                        messageSubtype
+                    });
+                    return; // Continue waiting for init message
+                }
+                isResolved = true;
+                cleanup();
+                // Validate that we received a system init message
+                if (!message || message.type !== 'system' || messageSubtype !== 'init') {
+                    this.logger.error('Expected system init message', {
                         streamingId,
                         actualType: message?.type,
-                        actualSubtype: 'subtype' in message ? message.subtype : undefined,
+                        actualSubtype: messageSubtype,
                         expectedType: 'system',
                         expectedSubtype: 'init'
                     });
-                    reject(new CUIError('INVALID_SYSTEM_INIT', `Expected system init message as first message, but got: ${message?.type}/${'subtype' in message ? message.subtype : 'undefined'}`, 500));
+                    reject(new CUIError('INVALID_SYSTEM_INIT', `Expected system init message, but got: ${message?.type}/${messageSubtype || 'undefined'}`, 500));
                     return;
                 }
                 // At this point, TypeScript knows message is SystemInitMessage

@@ -278,7 +278,8 @@ export class ClaudeProcessManager extends EventEmitter {
       let isResolved = false;
       let stderrOutput = '';
       
-      // Set up timeout (1 minute)
+      // Set up timeout (configurable, default 2 minutes for plugin cold start)
+      const initTimeoutMs = parseInt(process.env.CUI_SYSTEM_INIT_TIMEOUT_MS || '120000', 10);
       const timeout = setTimeout(() => {
         if (!isResolved) {
           isResolved = true;
@@ -296,7 +297,7 @@ export class ClaudeProcessManager extends EventEmitter {
           
           reject(new CUIError('SYSTEM_INIT_TIMEOUT', errorMessage, 500));
         }
-      }, 60000);
+      }, initTimeoutMs);
       
       // Cleanup function to remove all listeners
       const cleanup = () => {
