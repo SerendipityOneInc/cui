@@ -150,6 +150,142 @@ export class ClaudeProcessManager extends EventEmitter {
         return this.executeConversationFlow(isResume ? 'resuming' : 'starting', isResume && config.resumedSessionId ? { resumeSessionId: config.resumedSessionId } : {}, config, args, spawnConfig, isResume ? 'PROCESS_RESUME_FAILED' : 'PROCESS_START_FAILED', isResume ? 'Failed to resume Claude process' : 'Failed to start Claude process');
     }
     /**
+     * Start a new conversation non-blocking: returns streamingId immediately after spawn validation.
+     * systemInit is handled in the background and emitted as events:
+     * - 'system-init-complete': { streamingId, systemInit }
+     * - 'system-init-failed': { streamingId, error }
+     */
+    async startConversationNonBlocking(config) {
+        const isResume = !!config.resumedSessionId;
+        this.logger.debug('Start conversation (non-blocking) requested', {
+            hasInitialPrompt: !!config.initialPrompt,
+            workingDirectory: config.workingDirectory,
+            model: config.model,
+            isResume,
+            resumedSessionId: config.resumedSessionId
+        });
+        // If resuming and no working directory provided, fetch from original session
+        let workingDirectory = config.workingDirectory;
+        if (isResume && !workingDirectory && config.resumedSessionId) {
+            const fetchedWorkingDirectory = await this.historyReader.getConversationWorkingDirectory(config.resumedSessionId);
+            if (!fetchedWorkingDirectory) {
+                throw new CUIError('CONVERSATION_NOT_FOUND', `Could not find working directory for session ${config.resumedSessionId}`, 404);
+            }
+            workingDirectory = fetchedWorkingDirectory;
+        }
+        const args = isResume && config.resumedSessionId
+            ? this.buildResumeArgs({ sessionId: config.resumedSessionId, message: config.initialPrompt, permissionMode: config.permissionMode })
+            : this.buildStartArgs(config);
+        const spawnConfig = {
+            executablePath: config.claudeExecutablePath || this.claudeExecutablePath,
+            cwd: workingDirectory || config.workingDirectory || process.cwd(),
+            env: { ...process.env, ...this.envOverrides }
+        };
+        const streamingId = uuidv4();
+        // Store config for use in waitForSystemInit
+        this.conversationConfigs.set(streamingId, config);
+        try {
+            // Validate Claude executable before proceeding
+            if (this.fileSystemService) {
+                await this.fileSystemService.validateExecutable(spawnConfig.executablePath);
+            }
+            this.logger.debug('Spawning process (non-blocking)', { streamingId, isResume });
+            // Filter out debugging-related environment variables
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { NODE_OPTIONS, VSCODE_INSPECTOR_OPTIONS, ...cleanEnv } = spawnConfig.env;
+            const envWithStreamingId = {
+                ...cleanEnv,
+                CUI_STREAMING_ID: streamingId,
+                PWD: spawnConfig.cwd,
+                INIT_CWD: spawnConfig.cwd
+            };
+            // Set up system init promise BEFORE spawning process (same as executeConversationFlow)
+            // This ensures the listener is registered before any messages can arrive
+            const systemInitPromise = this.waitForSystemInit(streamingId);
+            const childProcess = this.spawnProcess({ ...spawnConfig, env: envWithStreamingId }, args, streamingId);
+            this.processes.set(streamingId, childProcess);
+            this.setupProcessHandlers(streamingId, childProcess);
+            // Handle spawn errors
+            const spawnErrorPromise = new Promise((_, reject) => {
+                this.once('spawn-error', (error) => {
+                    this.processes.delete(streamingId);
+                    reject(error);
+                });
+            });
+            // Wait a bit to see if spawn fails immediately
+            const delayPromise = new Promise(resolve => {
+                setTimeout(() => {
+                    this.removeAllListeners('spawn-error');
+                    resolve(streamingId);
+                }, 100);
+            });
+            await Promise.race([spawnErrorPromise, delayPromise]);
+            // Process spawned — now handle systemInit in the background
+            this.logger.debug('Process spawned, waiting for system init in background', { streamingId });
+            systemInitPromise
+                .then(async (systemInit) => {
+                this.logger.debug('System init received (non-blocking)', {
+                    streamingId,
+                    sessionId: systemInit.session_id
+                });
+                // Run git head check asynchronously (don't block)
+                if (this.sessionInfoService && this.fileSystemService) {
+                    this.setInitialCommitHead(systemInit).catch(error => {
+                        this.logger.warn('Failed to set initial commit head (non-blocking)', {
+                            sessionId: systemInit.session_id,
+                            error: error instanceof Error ? error.message : String(error)
+                        });
+                    });
+                }
+                this.emit('system-init-complete', { streamingId, systemInit, config });
+            })
+                .catch((error) => {
+                this.logger.error('System init failed (non-blocking)', error, { streamingId });
+                // Clean up resources
+                const timeouts = this.timeouts.get(streamingId);
+                if (timeouts) {
+                    timeouts.forEach(timeout => clearTimeout(timeout));
+                    this.timeouts.delete(streamingId);
+                }
+                this.processes.delete(streamingId);
+                this.outputBuffers.delete(streamingId);
+                this.conversationConfigs.delete(streamingId);
+                this.emit('system-init-failed', { streamingId, error });
+            });
+            return { streamingId };
+        }
+        catch (error) {
+            this.logger.error('Error spawning process (non-blocking)', error, { streamingId });
+            // Clean up
+            this.processes.delete(streamingId);
+            this.outputBuffers.delete(streamingId);
+            this.conversationConfigs.delete(streamingId);
+            if (error instanceof CUIError) {
+                throw error;
+            }
+            throw new CUIError(isResume ? 'PROCESS_RESUME_FAILED' : 'PROCESS_START_FAILED', `Failed to ${isResume ? 'resume' : 'start'} Claude process: ${error}`, 500);
+        }
+    }
+    /**
+     * Set initial commit head for a session (async helper)
+     */
+    async setInitialCommitHead(systemInit) {
+        if (!this.sessionInfoService || !this.fileSystemService)
+            return;
+        if (await this.fileSystemService.isGitRepository(systemInit.cwd)) {
+            const gitHead = await this.fileSystemService.getCurrentGitHead(systemInit.cwd);
+            if (gitHead) {
+                await this.sessionInfoService.updateSessionInfo(systemInit.session_id, {
+                    initial_commit_head: gitHead
+                });
+                this.logger.debug('Set initial commit head for new session', {
+                    sessionId: systemInit.session_id,
+                    gitHead
+                });
+            }
+        }
+    }
+    /**
      * Stop a conversation
      */
     async stopConversation(streamingId) {

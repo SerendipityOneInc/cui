@@ -290,6 +290,56 @@ describe('ClaudeProcessManager', () => {
     }, 2000);
   });
 
+  describe('startConversationNonBlocking', () => {
+    it('should return streamingId immediately without waiting for systemInit', async () => {
+      const config: ConversationConfig = {
+        workingDirectory: process.cwd(),
+        initialPrompt: 'test non-blocking'
+      };
+
+      const start = Date.now();
+      const { streamingId } = await manager.startConversationNonBlocking(config);
+      const elapsed = Date.now() - start;
+
+      expect(streamingId).toBeDefined();
+      expect(typeof streamingId).toBe('string');
+      expect(streamingId.length).toBeGreaterThan(0);
+      // Should return in well under 1 second (spawn validation is 100ms)
+      expect(elapsed).toBeLessThan(500);
+      // Session should be tracked as active
+      expect(manager.isSessionActive(streamingId)).toBe(true);
+    }, 2000);
+
+    it('should emit system-init-complete event in background', async () => {
+      const config: ConversationConfig = {
+        workingDirectory: process.cwd(),
+        initialPrompt: 'test non-blocking events'
+      };
+
+      const initComplete = new Promise<{ streamingId: string; systemInit: any }>((resolve, reject) => {
+        manager.on('system-init-complete', resolve);
+        manager.on('system-init-failed', ({ error }) => reject(error));
+      });
+
+      const { streamingId } = await manager.startConversationNonBlocking(config);
+
+      const result = await initComplete;
+      expect(result.streamingId).toBe(streamingId);
+      expect(result.systemInit).toBeDefined();
+      expect(result.systemInit.type).toBe('system');
+      expect(result.systemInit.subtype).toBe('init');
+    }, 15000);
+
+    it('should handle invalid working directory', async () => {
+      const config: ConversationConfig = {
+        workingDirectory: '/nonexistent/directory/that/does/not/exist',
+        initialPrompt: 'test'
+      };
+
+      await expect(manager.startConversationNonBlocking(config)).rejects.toThrow();
+    }, 3000);
+  });
+
   describe('error handling', () => {
     it('should throw error for invalid working directory', async () => {
       const config: ConversationConfig = {

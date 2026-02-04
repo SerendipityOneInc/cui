@@ -108,12 +108,17 @@ export function Home() {
         model: model === 'default' ? undefined : model,
         permissionMode: permissionMode === 'default' ? undefined : permissionMode,
       });
-      
-      // Navigate to the conversation page
-      navigate(`/c/${response.sessionId}`);
+
+      // Navigate immediately to the pending conversation page (non-blocking)
+      navigate(`/c/new/${response.streamingId}`, {
+        state: {
+          streamingId: response.streamingId,
+          initialPrompt: text,
+          workingDirectory,
+        }
+      });
     } catch (error) {
       console.error('Failed to start conversation:', error);
-      // You might want to show an error message to the user here
       alert(`Failed to start conversation: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsSubmitting(false);
     }

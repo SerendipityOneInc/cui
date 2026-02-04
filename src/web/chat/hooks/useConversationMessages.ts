@@ -10,6 +10,7 @@ interface UseConversationMessagesOptions {
   onError?: (error: string) => void;
   onClosed?: () => void;
   onPermissionRequest?: (permission: PermissionRequest) => void;
+  onSystemInit?: (data: { sessionId: string; cwd: string; model: string }) => void;
 }
 
 /**
@@ -72,9 +73,19 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
         // Stream connected
         break;
       
-      case 'system_init':
-        // Capture working directory from system init
-        setCurrentWorkingDirectory(event.cwd);
+      case 'system':
+        // Handle system messages — specifically the init subtype
+        if ('subtype' in event && event.subtype === 'init') {
+          setCurrentWorkingDirectory(event.cwd);
+          if ('session_id' in event) {
+            options.onSystemInit?.({
+              sessionId: event.session_id,
+              cwd: event.cwd,
+              model: (event as any).model || ''
+            });
+          }
+        }
+        // Other system subtypes (hook_started, hook_completed) are ignored
         break;
 
       case 'user':

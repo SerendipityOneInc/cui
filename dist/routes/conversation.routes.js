@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { CUIError } from '../types/index.js';
 import { createLogger } from '../services/logger.js';
-export function createConversationRoutes(processManager, historyReader, statusTracker, sessionInfoService, conversationStatusManager, toolMetricsService) {
+export function createConversationRoutes(processManager, historyReader, statusTracker, sessionInfoService, conversationStatusManager, toolMetricsService, streamManager) {
     const router = Router();
     const logger = createLogger('ConversationRoutes');
     // Start new conversation (also handles resume if resumedSessionId is provided)
@@ -79,86 +79,23 @@ export function createConversationRoutes(processManager, historyReader, statusTr
                 previousMessages: previousMessages.length > 0 ? previousMessages : undefined,
                 permissionMode: req.body.permissionMode || inheritedPermissionMode
             };
-            const { streamingId, systemInit } = await processManager.startConversation(conversationConfig);
-            // Update original session with continuation session ID if resuming
-            if (req.body.resumedSessionId) {
-                try {
-                    await sessionInfoService.updateSessionInfo(req.body.resumedSessionId, {
-                        continuation_session_id: systemInit.session_id
-                    });
-                    logger.debug('Updated original session with continuation ID', {
-                        originalSessionId: req.body.resumedSessionId,
-                        continuationSessionId: systemInit.session_id
-                    });
-                }
-                catch (error) {
-                    logger.warn('Failed to update original session with continuation ID', {
-                        originalSessionId: req.body.resumedSessionId,
-                        error: error instanceof Error ? error.message : String(error)
-                    });
-                }
-                // Register the resumed session with conversation status manager including previous messages
-                try {
-                    conversationStatusManager.registerActiveSession(streamingId, systemInit.session_id, {
-                        initialPrompt: req.body.initialPrompt,
-                        workingDirectory: systemInit.cwd,
-                        model: systemInit.model,
-                        inheritedMessages: previousMessages.length > 0 ? previousMessages : undefined
-                    });
-                    logger.debug('Registered resumed session with inherited messages', {
-                        requestId,
-                        newSessionId: systemInit.session_id,
-                        streamingId,
-                        inheritedMessageCount: previousMessages.length
-                    });
-                }
-                catch (error) {
-                    logger.warn('Failed to register resumed session with status manager', {
-                        requestId,
-                        error: error instanceof Error ? error.message : String(error)
-                    });
-                }
-            }
-            // Store permission mode in session info if provided
-            if (conversationConfig.permissionMode) {
-                try {
-                    await sessionInfoService.updateSessionInfo(systemInit.session_id, {
-                        permission_mode: conversationConfig.permissionMode
-                    });
-                    logger.debug('Stored permission mode in session info', {
-                        sessionId: systemInit.session_id,
-                        permissionMode: conversationConfig.permissionMode
-                    });
-                }
-                catch (error) {
-                    logger.warn('Failed to store permission mode in session info', {
-                        sessionId: systemInit.session_id,
-                        permissionMode: conversationConfig.permissionMode,
-                        error: error instanceof Error ? error.message : String(error)
-                    });
-                }
-            }
-            logger.debug('Conversation started successfully', {
+            // Enable buffering before spawning so no messages are lost
+            // Use non-blocking start: returns streamingId immediately after spawn validation
+            const { streamingId } = await processManager.startConversationNonBlocking(conversationConfig);
+            // Enable buffering so messages emitted before SSE client connects are captured
+            streamManager.enableBuffering(streamingId);
+            // Post-init operations (continuation ID, session registration, permission mode)
+            // are now handled by the 'system-init-complete' event in cui-server.ts
+            logger.debug('Conversation spawn initiated (non-blocking)', {
                 requestId,
                 isResume,
                 resumedSessionId: req.body.resumedSessionId,
                 streamingId,
-                sessionId: systemInit.session_id,
-                model: systemInit.model,
-                cwd: systemInit.cwd,
                 previousMessageCount: previousMessages.length
             });
             res.json({
                 streamingId,
                 streamUrl: `/api/stream/${streamingId}`,
-                // System init fields
-                sessionId: systemInit.session_id,
-                cwd: systemInit.cwd,
-                tools: systemInit.tools,
-                mcpServers: systemInit.mcp_servers,
-                model: systemInit.model,
-                permissionMode: systemInit.permissionMode,
-                apiKeySource: systemInit.apiKeySource
             });
         }
         catch (error) {

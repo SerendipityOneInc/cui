@@ -6,10 +6,18 @@ import { EventEmitter } from 'events';
  */
 export declare class StreamManager extends EventEmitter {
     private clients;
+    private messageBuffers;
+    private readonly MAX_BUFFER_SIZE;
     private logger;
     private heartbeatInterval?;
     private readonly HEARTBEAT_INTERVAL_MS;
     constructor();
+    /**
+     * Enable message buffering for a streaming session.
+     * Messages broadcast before any SSE client connects will be buffered
+     * and replayed when the first client connects.
+     */
+    enableBuffering(streamingId: string): void;
     /**
      * Add a client to receive stream updates
      */

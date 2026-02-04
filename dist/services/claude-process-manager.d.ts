@@ -56,6 +56,21 @@ export declare class ClaudeProcessManager extends EventEmitter {
         systemInit: SystemInitMessage;
     }>;
     /**
+     * Start a new conversation non-blocking: returns streamingId immediately after spawn validation.
+     * systemInit is handled in the background and emitted as events:
+     * - 'system-init-complete': { streamingId, systemInit }
+     * - 'system-init-failed': { streamingId, error }
+     */
+    startConversationNonBlocking(config: ConversationConfig & {
+        resumedSessionId?: string;
+    }): Promise<{
+        streamingId: string;
+    }>;
+    /**
+     * Set initial commit head for a session (async helper)
+     */
+    private setInitialCommitHead;
+    /**
      * Stop a conversation
      */
     stopConversation(streamingId: string): Promise<boolean>;

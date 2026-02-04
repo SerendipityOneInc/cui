@@ -911,20 +911,10 @@ describe('CUIServer', () => {
 
     describe('POST /api/conversations/start', () => {
       it('should start conversation successfully', async () => {
-        const mockSystemInit = {
-          type: 'system',
-          subtype: 'init',
-          session_id: 'test-session-123',
-          cwd: '/test/project',
-          tools: ['Bash', 'Read'],
-          mcp_servers: [],
-          model: 'claude-3-5-sonnet',
-          permissionMode: 'auto',
-          apiKeySource: 'env'
-        };
-
-        vi.spyOn((server as any).processManager, 'startConversation')
-          .mockResolvedValue({ streamingId: 'stream-123', systemInit: mockSystemInit });
+        vi.spyOn((server as any).processManager, 'startConversationNonBlocking')
+          .mockResolvedValue({ streamingId: 'stream-123' });
+        vi.spyOn((server as any).streamManager, 'enableBuffering')
+          .mockImplementation(() => {});
 
         const response = await request(app)
           .post('/api/conversations/start')
@@ -934,23 +924,21 @@ describe('CUIServer', () => {
           })
           .expect(200);
 
-        // Verify process manager was called
-        expect((server as any).processManager.startConversation).toHaveBeenCalledWith({
-          workingDirectory: '/test/project',
-          initialPrompt: 'Hello Claude!'
-        });
+        // Verify process manager was called (non-blocking)
+        expect((server as any).processManager.startConversationNonBlocking).toHaveBeenCalledWith(
+          expect.objectContaining({
+            workingDirectory: '/test/project',
+            initialPrompt: 'Hello Claude!'
+          })
+        );
 
-        // Verify response
+        // Verify buffering was enabled
+        expect((server as any).streamManager.enableBuffering).toHaveBeenCalledWith('stream-123');
+
+        // Verify response (minimal — sessionId arrives via SSE now)
         expect(response.body).toEqual({
           streamingId: 'stream-123',
           streamUrl: '/api/stream/stream-123',
-          sessionId: 'test-session-123',
-          cwd: '/test/project',
-          tools: ['Bash', 'Read'],
-          mcpServers: [],
-          model: 'claude-3-5-sonnet',
-          permissionMode: 'auto',
-          apiKeySource: 'env'
         });
       });
     });
