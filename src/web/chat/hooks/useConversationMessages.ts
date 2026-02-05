@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
-import type { ChatMessage, StreamEvent, ToolResult } from '../types';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { ChatMessage, StreamEvent, ToolResult, SystemInitMessage } from '../types';
 import type { ContentBlock, ContentBlockParam } from '@anthropic-ai/sdk/resources/messages/messages';
 import type { PermissionRequest } from '@/types';
 
 interface UseConversationMessagesOptions {
   onUserMessage?: (message: ChatMessage) => void;
   onAssistantMessage?: (message: ChatMessage) => void;
+  onSystemInit?: (systemInit: SystemInitMessage) => void;
   onResult?: (sessionId: string) => void;
   onError?: (error: string) => void;
   onClosed?: () => void;
@@ -23,6 +24,12 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
   const [currentPermissionRequest, setCurrentPermissionRequest] = useState<PermissionRequest | null>(null);
   const [childrenMessages, setChildrenMessages] = useState<Record<string, ChatMessage[]>>({});
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  // Use ref to avoid stale closures in handleStreamMessage
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   // Clear messages
   const clearMessages = useCallback(() => {
@@ -71,10 +78,20 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
       case 'connected':
         // Stream connected
         break;
-      
+
+      case 'system':
+        // Handle system init message (type='system', subtype='init')
+        if ('subtype' in event && event.subtype === 'init') {
+          const sysInit = event as SystemInitMessage;
+          setCurrentWorkingDirectory(sysInit.cwd);
+          optionsRef.current.onSystemInit?.(sysInit);
+        }
+        // Other system subtypes (hook_started, hook_completed, etc.) are ignored
+        break;
+
       case 'system_init':
-        // Capture working directory from system init
-        setCurrentWorkingDirectory(event.cwd);
+        // Legacy: capture working directory from system init
+        setCurrentWorkingDirectory((event as any).cwd);
         break;
 
       case 'user':
@@ -163,14 +180,14 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
         } else {
           // Regular message - add to main list
           addMessage(assistantMessage);
-          options.onAssistantMessage?.(assistantMessage);
+          optionsRef.current.onAssistantMessage?.(assistantMessage);
         }
         break;
 
       case 'result':
         // Only update conversation status, don't update messages
         if (event.session_id) {
-          options.onResult?.(event.session_id);
+          optionsRef.current.onResult?.(event.session_id);
         }
         break;
 
@@ -184,14 +201,14 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
           content: event.error,
           timestamp: new Date().toISOString(),
         };
-        
+
         addMessage(errorMessage);
-        options.onError?.(event.error);
+        optionsRef.current.onError?.(event.error);
         break;
 
       case 'closed':
         // Stream closed
-        options.onClosed?.();
+        optionsRef.current.onClosed?.();
         // Clear permission request when stream closes
         setCurrentPermissionRequest(null);
         break;
@@ -199,10 +216,10 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
       case 'permission_request':
         // Handle permission request
         setCurrentPermissionRequest(event.data);
-        options.onPermissionRequest?.(event.data);
+        optionsRef.current.onPermissionRequest?.(event.data);
         break;
     }
-  }, [addMessage, options, currentWorkingDirectory]);
+  }, [addMessage, currentWorkingDirectory]);
 
   // Set all messages at once (for loading from API)
   const setAllMessages = useCallback((newMessages: ChatMessage[]) => {

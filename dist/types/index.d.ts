@@ -116,16 +116,16 @@ export interface StartConversationRequest {
 export interface StartConversationResponse {
     streamingId: string;
     streamUrl: string;
-    sessionId: string;
-    cwd: string;
-    tools: string[];
-    mcpServers: {
+    sessionId?: string;
+    cwd?: string;
+    tools?: string[];
+    mcpServers?: {
         name: string;
         status: string;
     }[];
-    model: string;
-    permissionMode: string;
-    apiKeySource: string;
+    model?: string;
+    permissionMode?: string;
+    apiKeySource?: string;
 }
 export interface ConversationListQuery {
     projectPath?: string;

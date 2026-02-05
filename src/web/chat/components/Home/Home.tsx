@@ -108,9 +108,11 @@ export function Home() {
         model: model === 'default' ? undefined : model,
         permissionMode: permissionMode === 'default' ? undefined : permissionMode,
       });
-      
-      // Navigate to the conversation page
-      navigate(`/c/${response.sessionId}`);
+
+      // Navigate to the pending conversation page (non-blocking flow)
+      navigate(`/c/new/${response.streamingId}`, {
+        state: { streamingId: response.streamingId, initialPrompt: text, workingDirectory }
+      });
     } catch (error) {
       console.error('Failed to start conversation:', error);
       // You might want to show an error message to the user here

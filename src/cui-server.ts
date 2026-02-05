@@ -482,7 +482,8 @@ export class CUIServer {
       this.statusTracker,
       this.sessionInfoService,
       this.conversationStatusManager,
-      this.toolMetricsService
+      this.toolMetricsService,
+      this.streamManager
     ));
     this.app.use('/api/filesystem', createFileSystemRoutes(this.fileSystemService));
     this.app.use('/api/logs', createLogRoutes());
@@ -511,33 +512,104 @@ export class CUIServer {
     // Set up tool metrics service to listen to claude messages
     this.toolMetricsService.listenToClaudeMessages(this.processManager);
     
-    // Forward Claude messages to stream
+    // Forward Claude messages to stream (including system init - needed for non-blocking flow)
     this.processManager.on('claude-message', ({ streamingId, message }) => {
-      this.logger.debug('Received claude-message event', { 
-        streamingId, 
+      this.logger.debug('Received claude-message event', {
+        streamingId,
         messageType: message?.type,
         messageSubtype: message?.subtype,
         hasContent: !!message?.content,
         contentLength: message?.content?.length || 0,
         messageKeys: message ? Object.keys(message) : []
       });
-      
-      // Skip broadcasting system init messages as they're now included in API response
-      if (message && message.type === 'system' && message.subtype === 'init') {
-        this.logger.debug('Skipping broadcast of system init message (included in API response)', {
-          streamingId,
-          sessionId: message.session_id
-        });
-        return;
-      }
-      
-      // Stream other Claude messages as normal
-      this.logger.debug('Broadcasting message to StreamManager', { 
-        streamingId, 
+
+      this.logger.debug('Broadcasting message to StreamManager', {
+        streamingId,
         messageType: message?.type,
         messageSubtype: message?.subtype
       });
       this.streamManager.broadcast(streamingId, message);
+    });
+
+    // Handle system-init-complete from non-blocking conversation start
+    this.processManager.on('system-init-complete', async ({ streamingId, systemInit }: { streamingId: string; systemInit: import('./types/index.js').SystemInitMessage }) => {
+      this.logger.info('System init complete event received', {
+        streamingId,
+        sessionId: systemInit.session_id,
+        model: systemInit.model,
+        cwd: systemInit.cwd
+      });
+
+      const config = this.processManager.getConversationConfig(streamingId);
+      if (!config) {
+        this.logger.warn('No config found for streaming session during system-init-complete', { streamingId });
+        return;
+      }
+
+      // Update continuation ID if resuming
+      if ((config as any).resumedSessionId) {
+        try {
+          await this.sessionInfoService.updateSessionInfo((config as any).resumedSessionId, {
+            continuation_session_id: systemInit.session_id
+          });
+          this.logger.debug('Updated original session with continuation ID', {
+            originalSessionId: (config as any).resumedSessionId,
+            continuationSessionId: systemInit.session_id
+          });
+        } catch (error) {
+          this.logger.warn('Failed to update original session with continuation ID', {
+            originalSessionId: (config as any).resumedSessionId,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+
+        // Register resumed session with previous messages
+        try {
+          this.conversationStatusManager.registerActiveSession(
+            streamingId,
+            systemInit.session_id,
+            {
+              initialPrompt: config.initialPrompt,
+              workingDirectory: systemInit.cwd,
+              model: systemInit.model,
+              inheritedMessages: config.previousMessages
+            }
+          );
+        } catch (error) {
+          this.logger.warn('Failed to register resumed session with status manager', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      // Store permission mode in session info
+      if (config.permissionMode) {
+        try {
+          await this.sessionInfoService.updateSessionInfo(systemInit.session_id, {
+            permission_mode: config.permissionMode
+          });
+        } catch (error) {
+          this.logger.warn('Failed to store permission mode in session info', {
+            sessionId: systemInit.session_id,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    });
+
+    // Handle system-init-failed from non-blocking conversation start
+    this.processManager.on('system-init-failed', ({ streamingId, error }: { streamingId: string; error: Error }) => {
+      this.logger.error('System init failed event received', error, { streamingId });
+
+      const errorEvent: StreamEvent = {
+        type: 'error' as const,
+        error: error instanceof Error ? error.message : String(error),
+        streamingId: streamingId,
+        timestamp: new Date().toISOString()
+      };
+
+      this.streamManager.broadcast(streamingId, errorEvent);
+      this.streamManager.closeSession(streamingId);
     });
 
     // Handle process closure

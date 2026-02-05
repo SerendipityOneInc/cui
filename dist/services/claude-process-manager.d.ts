@@ -47,6 +47,22 @@ export declare class ClaudeProcessManager extends EventEmitter {
      */
     setNotificationService(service: NotificationService): void;
     /**
+     * Get conversation config for a streaming session
+     */
+    getConversationConfig(streamingId: string): ConversationConfig | undefined;
+    /**
+     * Start a new Claude conversation non-blocking (or resume if resumedSessionId is provided)
+     * Returns immediately after spawn verification, system init happens in background.
+     * Emits 'system-init-complete' or 'system-init-failed' events.
+     */
+    startConversationNonBlocking(config: ConversationConfig & {
+        resumedSessionId?: string;
+    }, options?: {
+        onStreamingIdCreated?: (streamingId: string) => void;
+    }): Promise<{
+        streamingId: string;
+    }>;
+    /**
      * Start a new Claude conversation (or resume if resumedSessionId is provided)
      */
     startConversation(config: ConversationConfig & {

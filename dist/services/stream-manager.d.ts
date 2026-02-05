@@ -6,10 +6,17 @@ import { EventEmitter } from 'events';
  */
 export declare class StreamManager extends EventEmitter {
     private clients;
+    private buffers;
     private logger;
     private heartbeatInterval?;
     private readonly HEARTBEAT_INTERVAL_MS;
+    private readonly MAX_BUFFER_SIZE;
     constructor();
+    /**
+     * Enable buffering for a streaming session.
+     * Messages will be buffered until a client connects, then replayed.
+     */
+    enableBuffering(streamingId: string): void;
     /**
      * Add a client to receive stream updates
      */

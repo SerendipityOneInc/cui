@@ -135,14 +135,14 @@ export interface StartConversationRequest {
 export interface StartConversationResponse {
   streamingId: string; // CUI's internal streaming identifier for managing streaming connections
   streamUrl: string;
-  // System init fields from Claude CLI
-  sessionId: string; // Claude CLI's session ID
-  cwd: string; // Working directory
-  tools: string[]; // Available tools
-  mcpServers: { name: string; status: string; }[]; // MCP server list
-  model: string; // Actual model being used
-  permissionMode: string; // Permission handling mode
-  apiKeySource: string; // API key source
+  // System init fields from Claude CLI (optional - arrive via SSE in non-blocking flow)
+  sessionId?: string; // Claude CLI's session ID
+  cwd?: string; // Working directory
+  tools?: string[]; // Available tools
+  mcpServers?: { name: string; status: string; }[]; // MCP server list
+  model?: string; // Actual model being used
+  permissionMode?: string; // Permission handling mode
+  apiKeySource?: string; // API key source
 }
 
 export interface ConversationListQuery {

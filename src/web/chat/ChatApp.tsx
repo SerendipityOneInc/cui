@@ -19,6 +19,11 @@ function ChatApp() {
                 <Home />
               </Layout>
             } />
+            <Route path="/c/new/:streamingId" element={
+              <Layout>
+                <ConversationView />
+              </Layout>
+            } />
             <Route path="/c/:sessionId" element={
               <Layout>
                 <ConversationView />

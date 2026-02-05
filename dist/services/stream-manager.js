@@ -5,13 +5,23 @@ import { createLogger } from './logger.js';
  */
 export class StreamManager extends EventEmitter {
     clients = new Map();
+    buffers = new Map();
     logger;
     heartbeatInterval;
     // Send heartbeat every 30 seconds to keep connections alive
     HEARTBEAT_INTERVAL_MS = 30000;
+    MAX_BUFFER_SIZE = 1000;
     constructor() {
         super();
         this.logger = createLogger('StreamManager');
+    }
+    /**
+     * Enable buffering for a streaming session.
+     * Messages will be buffered until a client connects, then replayed.
+     */
+    enableBuffering(streamingId) {
+        this.logger.debug('Enabling buffering for session', { streamingId });
+        this.buffers.set(streamingId, []);
     }
     /**
      * Add a client to receive stream updates
@@ -23,6 +33,7 @@ export class StreamManager extends EventEmitter {
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('X-Accel-Buffering', 'no');
         res.setHeader('Access-Control-Allow-Origin', '*');
+        res.flushHeaders?.();
         // Initialize client set if needed
         if (!this.clients.has(streamingId)) {
             this.clients.set(streamingId, new Set());
@@ -44,6 +55,25 @@ export class StreamManager extends EventEmitter {
             clientCount: this.clients.get(streamingId).size
         });
         this.sendSSEEvent(res, connectionMessage);
+        // Replay buffered messages if any
+        const bufferedEvents = this.buffers.get(streamingId);
+        if (bufferedEvents && bufferedEvents.length > 0) {
+            this.logger.debug('Replaying buffered events to new client', {
+                streamingId,
+                bufferedCount: bufferedEvents.length
+            });
+            for (const event of bufferedEvents) {
+                try {
+                    this.sendSSEEvent(res, event);
+                }
+                catch (error) {
+                    this.logger.error('Failed to replay buffered event', error, { streamingId });
+                    break;
+                }
+            }
+            // Clear buffer after replay
+            this.buffers.delete(streamingId);
+        }
         // Start heartbeat if this is the first client
         this.startHeartbeat();
         // Clean up when client disconnects
@@ -83,7 +113,24 @@ export class StreamManager extends EventEmitter {
         });
         const clients = this.clients.get(streamingId);
         if (!clients || clients.size === 0) {
-            this.logger.debug('No clients found for streaming session, dropping message', { streamingId });
+            // Buffer the event if buffering is enabled for this session
+            const buffer = this.buffers.get(streamingId);
+            if (buffer) {
+                if (buffer.length < this.MAX_BUFFER_SIZE) {
+                    buffer.push(event);
+                    this.logger.debug('Buffered event (no clients connected)', {
+                        streamingId,
+                        eventType: event?.type,
+                        bufferSize: buffer.length
+                    });
+                }
+                else {
+                    this.logger.warn('Buffer full, dropping event', { streamingId, bufferSize: buffer.length });
+                }
+            }
+            else {
+                this.logger.debug('No clients found for streaming session, dropping message', { streamingId });
+            }
             return;
         }
         this.logger.debug('Found clients for broadcast', {
@@ -129,6 +176,7 @@ export class StreamManager extends EventEmitter {
             sseDataLength: sseData.length
         });
         res.write(sseData);
+        res.flush?.();
     }
     /**
      * Send SSE heartbeat (comment) to keep connection alive
@@ -178,8 +226,9 @@ export class StreamManager extends EventEmitter {
                 this.logger.error('Error closing SSE client connection', error, { streamingId });
             }
         }
-        // Remove the entire session
+        // Remove the entire session and its buffer
         this.clients.delete(streamingId);
+        this.buffers.delete(streamingId);
         // Stop heartbeat if no clients remain
         if (this.getTotalClientCount() === 0) {
             this.stopHeartbeat();
@@ -202,6 +251,7 @@ export class StreamManager extends EventEmitter {
         for (const streamingId of this.clients.keys()) {
             this.closeSession(streamingId);
         }
+        this.buffers.clear();
         this.stopHeartbeat();
     }
     /**

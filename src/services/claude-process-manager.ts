@@ -125,6 +125,168 @@ export class ClaudeProcessManager extends EventEmitter {
 
 
   /**
+   * Get conversation config for a streaming session
+   */
+  getConversationConfig(streamingId: string): ConversationConfig | undefined {
+    return this.conversationConfigs.get(streamingId);
+  }
+
+  /**
+   * Start a new Claude conversation non-blocking (or resume if resumedSessionId is provided)
+   * Returns immediately after spawn verification, system init happens in background.
+   * Emits 'system-init-complete' or 'system-init-failed' events.
+   */
+  async startConversationNonBlocking(config: ConversationConfig & { resumedSessionId?: string }, options?: { onStreamingIdCreated?: (streamingId: string) => void }): Promise<{ streamingId: string }> {
+    const isResume = !!config.resumedSessionId;
+
+    this.logger.debug('Start conversation non-blocking requested', {
+      hasInitialPrompt: !!config.initialPrompt,
+      workingDirectory: config.workingDirectory,
+      model: config.model,
+      isResume,
+      resumedSessionId: config.resumedSessionId,
+    });
+
+    // If resuming and no working directory provided, fetch from original session
+    let workingDirectory = config.workingDirectory;
+    if (isResume && !workingDirectory && config.resumedSessionId) {
+      const fetchedWorkingDirectory = await this.historyReader.getConversationWorkingDirectory(config.resumedSessionId);
+
+      if (!fetchedWorkingDirectory) {
+        throw new CUIError(
+          'CONVERSATION_NOT_FOUND',
+          `Could not find working directory for session ${config.resumedSessionId}`,
+          404
+        );
+      }
+
+      workingDirectory = fetchedWorkingDirectory;
+    }
+
+    const args = isResume && config.resumedSessionId
+      ? this.buildResumeArgs({ sessionId: config.resumedSessionId, message: config.initialPrompt, permissionMode: config.permissionMode })
+      : this.buildStartArgs(config);
+
+    const spawnConfig = {
+      executablePath: config.claudeExecutablePath || this.claudeExecutablePath,
+      cwd: workingDirectory || config.workingDirectory || process.cwd(),
+      env: { ...process.env, ...this.envOverrides } as NodeJS.ProcessEnv
+    };
+
+    const streamingId = uuidv4();
+
+    // Notify caller of streamingId before spawning (for buffering setup)
+    options?.onStreamingIdCreated?.(streamingId);
+
+    // Store config for use by event handlers
+    this.conversationConfigs.set(streamingId, config);
+
+    try {
+      // Validate Claude executable before proceeding
+      if (this.fileSystemService) {
+        await this.fileSystemService.validateExecutable(spawnConfig.executablePath);
+      }
+
+      // Set up system init promise before spawning process (but don't await it)
+      const systemInitPromise = this.waitForSystemInit(streamingId);
+
+      // Filter out debugging-related environment variables
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { NODE_OPTIONS, VSCODE_INSPECTOR_OPTIONS, ...cleanEnv } = spawnConfig.env;
+
+      const envWithStreamingId = {
+        ...cleanEnv,
+        CUI_STREAMING_ID: streamingId,
+        PWD: spawnConfig.cwd,
+        INIT_CWD: spawnConfig.cwd
+      };
+
+      const process = this.spawnProcess(
+        { ...spawnConfig, env: envWithStreamingId },
+        args,
+        streamingId
+      );
+
+      this.processes.set(streamingId, process);
+      this.setupProcessHandlers(streamingId, process);
+
+      // Handle spawn errors
+      const spawnErrorPromise = new Promise<never>((_, reject) => {
+        this.once('spawn-error', (error) => {
+          this.processes.delete(streamingId);
+          reject(error);
+        });
+      });
+
+      // Wait for spawn validation (100ms)
+      const delayPromise = new Promise<string>(resolve => {
+        setTimeout(() => {
+          this.removeAllListeners('spawn-error');
+          resolve(streamingId);
+        }, 100);
+      });
+
+      await Promise.race([spawnErrorPromise, delayPromise]);
+
+      // Background: wait for system init and do post-init work
+      systemInitPromise.then(async (systemInit) => {
+        this.logger.info('System init complete (non-blocking)', {
+          streamingId,
+          sessionId: systemInit.session_id,
+          model: systemInit.model,
+        });
+
+        // Git head initialization in background
+        if (this.sessionInfoService && this.fileSystemService) {
+          try {
+            if (await this.fileSystemService.isGitRepository(systemInit.cwd)) {
+              const gitHead = await this.fileSystemService.getCurrentGitHead(systemInit.cwd);
+              if (gitHead) {
+                await this.sessionInfoService.updateSessionInfo(systemInit.session_id, {
+                  initial_commit_head: gitHead
+                });
+              }
+            }
+          } catch (error) {
+            this.logger.warn('Failed to set initial commit head', {
+              sessionId: systemInit.session_id,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+
+        this.emit('system-init-complete', { streamingId, systemInit });
+      }).catch((error) => {
+        this.logger.error('System init failed (non-blocking)', error, { streamingId });
+        this.emit('system-init-failed', { streamingId, error });
+      });
+
+      this.logger.debug('Non-blocking conversation started, returning streamingId', { streamingId });
+      return { streamingId };
+
+    } catch (error) {
+      // Clean up on spawn failure
+      const timeouts = this.timeouts.get(streamingId);
+      if (timeouts) {
+        timeouts.forEach(timeout => clearTimeout(timeout));
+        this.timeouts.delete(streamingId);
+      }
+      this.processes.delete(streamingId);
+      this.outputBuffers.delete(streamingId);
+      this.conversationConfigs.delete(streamingId);
+
+      if (error instanceof CUIError) {
+        throw error;
+      }
+      throw new CUIError(
+        isResume ? 'PROCESS_RESUME_FAILED' : 'PROCESS_START_FAILED',
+        `Failed to ${isResume ? 'resume' : 'start'} Claude process: ${error}`,
+        500
+      );
+    }
+  }
+
+  /**
    * Start a new Claude conversation (or resume if resumedSessionId is provided)
    */
   async startConversation(config: ConversationConfig & { resumedSessionId?: string }): Promise<{streamingId: string; systemInit: SystemInitMessage}> {
