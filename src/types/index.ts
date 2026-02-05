@@ -129,6 +129,7 @@ export interface StartConversationRequest {
   systemPrompt?: string;
   permissionMode?: string; // Permission mode: "acceptEdits" | "bypassPermissions" | "default" | "plan"
   resumedSessionId?: string; // Optional: session ID to resume from
+  blocking?: boolean; // If true, wait for system init and return full response with sessionId
 }
 
 

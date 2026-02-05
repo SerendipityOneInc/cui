@@ -115,30 +115,57 @@ export function createConversationRoutes(
         permissionMode: req.body.permissionMode || inheritedPermissionMode
       };
 
-      // Use non-blocking start — returns immediately after spawn verification
-      // Post-init work (continuation ID, session registration, permission mode)
-      // is handled by cui-server.ts system-init-complete event handler
-      const { streamingId } = await processManager.startConversationNonBlocking(conversationConfig, {
-        // Enable SSE buffering before spawning so no messages are lost
-        onStreamingIdCreated: (id) => {
-          if (streamManager) {
-            streamManager.enableBuffering(id);
+      if (req.body.blocking) {
+        // Blocking mode: wait for system init and return full response with sessionId
+        // Used by SDK/CLI that need sessionId immediately
+        const { streamingId, systemInit } = await processManager.startConversation(conversationConfig);
+
+        logger.debug('Conversation started (blocking), returning full response', {
+          requestId,
+          isResume,
+          resumedSessionId: req.body.resumedSessionId,
+          streamingId,
+          sessionId: systemInit.session_id,
+          previousMessageCount: previousMessages.length
+        });
+
+        res.json({
+          streamingId,
+          streamUrl: `/api/stream/${streamingId}`,
+          sessionId: systemInit.session_id,
+          cwd: systemInit.cwd,
+          tools: systemInit.tools,
+          mcpServers: systemInit.mcp_servers?.map((s: { name: string; status: string }) => ({ name: s.name, status: s.status })),
+          model: systemInit.model,
+          permissionMode: systemInit.permissionMode,
+          apiKeySource: systemInit.apiKeySource,
+        });
+      } else {
+        // Non-blocking mode (default): return immediately for frontend optimistic UI
+        // Post-init work (continuation ID, session registration, permission mode)
+        // is handled by cui-server.ts system-init-complete event handler
+        const { streamingId } = await processManager.startConversationNonBlocking(conversationConfig, {
+          // Enable SSE buffering before spawning so no messages are lost
+          onStreamingIdCreated: (id) => {
+            if (streamManager) {
+              streamManager.enableBuffering(id);
+            }
           }
-        }
-      });
+        });
 
-      logger.debug('Conversation started (non-blocking), returning streamingId', {
-        requestId,
-        isResume,
-        resumedSessionId: req.body.resumedSessionId,
-        streamingId,
-        previousMessageCount: previousMessages.length
-      });
+        logger.debug('Conversation started (non-blocking), returning streamingId', {
+          requestId,
+          isResume,
+          resumedSessionId: req.body.resumedSessionId,
+          streamingId,
+          previousMessageCount: previousMessages.length
+        });
 
-      res.json({
-        streamingId,
-        streamUrl: `/api/stream/${streamingId}`,
-      });
+        res.json({
+          streamingId,
+          streamUrl: `/api/stream/${streamingId}`,
+        });
+      }
     } catch (error) {
       logger.debug('Start conversation failed', {
         requestId,
