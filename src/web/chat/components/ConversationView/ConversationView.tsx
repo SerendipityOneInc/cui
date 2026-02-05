@@ -69,6 +69,7 @@ export function ConversationView() {
       setStreamingId(null);
     },
     onSystemInit: ({ sessionId: initSessionId, cwd }) => {
+      console.log('[ConversationView] onSystemInit called:', { initSessionId, cwd, isPending });
       // System init received via SSE — update sessionId and URL
       setSessionId(initSessionId);
       setIsPending(false);
@@ -80,21 +81,10 @@ export function ConversationView() {
     },
   });
 
-  // Add optimistic user message for pending mode
-  useEffect(() => {
-    if (isPendingMode && navState?.initialPrompt) {
-      const optimisticMessage: ChatMessage = {
-        id: 'optimistic-user-msg',
-        messageId: 'optimistic-user-msg',
-        type: 'user',
-        content: navState.initialPrompt,
-        timestamp: new Date().toISOString(),
-        workingDirectory: navState.workingDirectory,
-      };
-      addMessage(optimisticMessage);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount
+  // Note: We don't add optimistic user messages here because Claude CLI
+  // sends user messages through the SSE stream, which are captured by the
+  // StreamManager buffer and replayed when the client connects.
+  // This prevents duplicate user messages.
 
   // Clear navigation state to prevent issues on refresh
   useEffect(() => {

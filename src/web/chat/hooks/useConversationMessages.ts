@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, StreamEvent, ToolResult } from '../types';
 import type { ContentBlock, ContentBlockParam } from '@anthropic-ai/sdk/resources/messages/messages';
 import type { PermissionRequest } from '@/types';
@@ -19,6 +19,12 @@ interface UseConversationMessagesOptions {
  */
 export function useConversationMessages(options: UseConversationMessagesOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // Use ref to keep options callbacks up-to-date without causing useCallback to re-create
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
   const [toolResults, setToolResults] = useState<Record<string, ToolResult>>({});
   const [currentWorkingDirectory, setCurrentWorkingDirectory] = useState<string | undefined>();
   const [currentPermissionRequest, setCurrentPermissionRequest] = useState<PermissionRequest | null>(null);
@@ -75,10 +81,12 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
       
       case 'system':
         // Handle system messages — specifically the init subtype
+        console.log('[useConversationMessages] Received system event:', event);
         if ('subtype' in event && event.subtype === 'init') {
+          console.log('[useConversationMessages] Processing system init:', { session_id: (event as any).session_id, cwd: event.cwd });
           setCurrentWorkingDirectory(event.cwd);
           if ('session_id' in event) {
-            options.onSystemInit?.({
+            optionsRef.current.onSystemInit?.({
               sessionId: event.session_id,
               cwd: event.cwd,
               model: (event as any).model || ''
@@ -174,14 +182,14 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
         } else {
           // Regular message - add to main list
           addMessage(assistantMessage);
-          options.onAssistantMessage?.(assistantMessage);
+          optionsRef.current.onAssistantMessage?.(assistantMessage);
         }
         break;
 
       case 'result':
         // Only update conversation status, don't update messages
         if (event.session_id) {
-          options.onResult?.(event.session_id);
+          optionsRef.current.onResult?.(event.session_id);
         }
         break;
 
@@ -197,12 +205,12 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
         };
         
         addMessage(errorMessage);
-        options.onError?.(event.error);
+        optionsRef.current.onError?.(event.error);
         break;
 
       case 'closed':
         // Stream closed
-        options.onClosed?.();
+        optionsRef.current.onClosed?.();
         // Clear permission request when stream closes
         setCurrentPermissionRequest(null);
         break;
@@ -210,10 +218,10 @@ export function useConversationMessages(options: UseConversationMessagesOptions 
       case 'permission_request':
         // Handle permission request
         setCurrentPermissionRequest(event.data);
-        options.onPermissionRequest?.(event.data);
+        optionsRef.current.onPermissionRequest?.(event.data);
         break;
     }
-  }, [addMessage, options, currentWorkingDirectory]);
+  }, [addMessage, currentWorkingDirectory]);
 
   // Set all messages at once (for loading from API)
   const setAllMessages = useCallback((newMessages: ChatMessage[]) => {

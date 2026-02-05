@@ -593,6 +593,12 @@ export class CUIServer {
                     streamingId: request.streamingId,
                     timestamp: new Date().toISOString()
                 };
+                this.logger.info('Broadcasting permission request via SSE', {
+                    id: request.id,
+                    toolName: request.toolName,
+                    streamingId: request.streamingId,
+                    clientCount: this.streamManager.getClientCount(request.streamingId)
+                });
                 this.streamManager.broadcast(request.streamingId, event);
                 // Permission request notification removed
             }

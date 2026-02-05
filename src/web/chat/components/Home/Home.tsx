@@ -109,6 +109,13 @@ export function Home() {
         permissionMode: permissionMode === 'default' ? undefined : permissionMode,
       });
 
+      console.log('[Home] API response:', response);
+
+      // Validate response has streamingId
+      if (!response.streamingId) {
+        throw new Error('API did not return streamingId');
+      }
+
       // Navigate immediately to the pending conversation page (non-blocking)
       navigate(`/c/new/${response.streamingId}`, {
         state: {

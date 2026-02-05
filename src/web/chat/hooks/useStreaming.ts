@@ -112,6 +112,7 @@ export function useStreaming(
               }
               
               const event = JSON.parse(jsonLine) as StreamEvent;
+              console.log('[useStreaming] Received event:', event.type, 'subtype' in event ? (event as any).subtype : '');
               optionsRef.current.onMessage(event);
             } catch (err) {
               console.error('Failed to parse stream message:', line, err);
