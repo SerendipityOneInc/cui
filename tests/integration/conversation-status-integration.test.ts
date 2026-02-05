@@ -64,27 +64,14 @@ describe('Conversation Status Integration', () => {
       });
       
       expect(startResponse.ok).toBe(true);
-      const startData = await startResponse.json() as { 
-        streamingId: string; 
+      const startData = await startResponse.json() as {
+        streamingId: string;
         streamUrl: string;
-        sessionId: string;
-        cwd: string;
-        tools: string[];
-        mcpServers: any[];
-        model: string;
-        permissionMode: string;
-        apiKeySource: string;
       };
       expect(startData).toHaveProperty('streamingId');
       expect(startData).toHaveProperty('streamUrl');
-      expect(startData).toHaveProperty('sessionId');
-      expect(startData).toHaveProperty('cwd');
-      expect(startData).toHaveProperty('tools');
-      expect(startData).toHaveProperty('mcpServers');
-      expect(startData).toHaveProperty('model');
-      expect(startData).toHaveProperty('permissionMode');
-      expect(startData).toHaveProperty('apiKeySource');
-      
+      // sessionId and other fields now arrive via SSE system init (non-blocking)
+
       const streamingId = startData.streamingId;
       const streamUrl = `${baseUrl}${startData.streamUrl}`;
       
@@ -190,16 +177,9 @@ describe('Conversation Status Integration', () => {
       });
       
       expect(startResponse.ok).toBe(true);
-      const startData = await startResponse.json() as { 
-        streamingId: string; 
+      const startData = await startResponse.json() as {
+        streamingId: string;
         streamUrl: string;
-        sessionId: string;
-        cwd: string;
-        tools: string[];
-        mcpServers: any[];
-        model: string;
-        permissionMode: string;
-        apiKeySource: string;
       };
       const streamingId = startData.streamingId;
       
