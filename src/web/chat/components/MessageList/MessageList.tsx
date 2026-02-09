@@ -120,10 +120,13 @@ export const MessageList: React.FC<MessageListProps> = ({
           // Only show streaming dots when no tool use icons are blinking
           return !hasLoadingToolUse ? (
             <div className="flex items-start px-4 mt-2">
-              <div className="w-4 h-5 flex-shrink-0 flex items-center justify-center text-foreground relative">
-                <div className="w-2.5 h-2.5 bg-foreground rounded-full mt-3.5 animate-pulse" aria-label="Streaming indicator" />
-                {/* Connector from last message */}
-                <div className="absolute left-1.5 -top-3 w-px h-5 bg-border hidden" />
+              <div className="text-sm text-muted-foreground mt-1" aria-label="Streaming indicator">
+                <span>Thinking</span>
+                <span className="inline-flex w-[1.5em]">
+                  <span className="animate-[dotPulse_1.4s_infinite_0s]">.</span>
+                  <span className="animate-[dotPulse_1.4s_infinite_0.2s]">.</span>
+                  <span className="animate-[dotPulse_1.4s_infinite_0.4s]">.</span>
+                </span>
               </div>
             </div>
           ) : null;

@@ -112,6 +112,7 @@ export interface StartConversationRequest {
     systemPrompt?: string;
     permissionMode?: string;
     resumedSessionId?: string;
+    blocking?: boolean;
 }
 export interface StartConversationResponse {
     streamingId: string;

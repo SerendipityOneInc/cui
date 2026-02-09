@@ -33,6 +33,7 @@ import { createWorkingDirectoriesRoutes } from './routes/working-directories.rou
 import { createConfigRoutes } from './routes/config.routes.js';
 import { createGeminiRoutes } from './routes/gemini.routes.js';
 import { createNotificationsRoutes } from './routes/notifications.routes.js';
+import { createSkillsRoutes } from './routes/skills.routes.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { createCorsMiddleware } from './middleware/cors-setup.js';
@@ -423,6 +424,7 @@ export class CUIServer {
         this.app.use('/api/working-directories', createWorkingDirectoriesRoutes(this.workingDirectoriesService));
         this.app.use('/api/config', createConfigRoutes(this.configService));
         this.app.use('/api/gemini', createGeminiRoutes(geminiService));
+        this.app.use('/api/skills', createSkillsRoutes());
         // React Router catch-all - must be after all API routes
         const isDev = process.env.NODE_ENV === 'development';
         if (!isDev) {
