@@ -38,3 +38,9 @@ body {
   flex-direction: column;
   overflow-x: hidden;
 }
+
+@keyframes dotPulse {
+  0%, 20% { opacity: 0; }
+  40% { opacity: 1; }
+  60%, 100% { opacity: 0; }
+}

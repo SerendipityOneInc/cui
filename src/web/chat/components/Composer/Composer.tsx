@@ -56,7 +56,7 @@ export interface ComposerProps {
 
   // Permission handling
   permissionRequest?: PermissionRequest | null;
-  onPermissionDecision?: (requestId: string, action: 'approve' | 'deny', denyReason?: string) => void;
+  onPermissionDecision?: (requestId: string, action: 'approve' | 'deny', denyReason?: string, modifiedInput?: Record<string, unknown>) => void;
 
   // Stop functionality
   onStop?: () => void;
@@ -72,6 +72,7 @@ export interface ComposerProps {
 
 export interface ComposerRef {
   focusInput: () => void;
+  setInput: (text: string) => void;
 }
 
 interface DirectoryDropdownProps {
@@ -350,6 +351,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
     focusedIndex: -1,
     type: 'file',
   });
+  const [askUserAnswers, setAskUserAnswers] = useState<Record<string, string>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   
@@ -365,12 +367,29 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
     audioData
   } = useAudioRecording();
 
-  // Expose focusInput method via ref
+  // Expose focusInput and setInput methods via ref
   useImperativeHandle(ref, () => ({
     focusInput: () => {
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
+    },
+    setInput: (text: string) => {
+      setValue(text);
+      // Focus and position cursor at first placeholder
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const placeholderMatch = text.match(/\[([^\]]+)\]/);
+          if (placeholderMatch && placeholderMatch.index !== undefined) {
+            textareaRef.current.setSelectionRange(
+              placeholderMatch.index,
+              placeholderMatch.index + placeholderMatch[0].length
+            );
+          }
+          adjustTextareaHeight();
+        }
+      }, 0);
     }
   }), []);
 
@@ -991,7 +1010,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
               )
             )}
             
-            {permissionRequest && showPermissionUI ? (
+            {permissionRequest && showPermissionUI && permissionRequest.toolName !== 'AskUserQuestion' ? (
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -1114,9 +1133,21 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
       
       {/* Permission Dialog */}
       {permissionRequest && showPermissionUI && (
-        <PermissionDialog 
+        <PermissionDialog
           permissionRequest={permissionRequest}
           isVisible={true}
+          onAnswersChange={setAskUserAnswers}
+          onSubmit={() => {
+            onPermissionDecision?.(permissionRequest.id, 'approve', undefined, {
+              ...permissionRequest.toolInput,
+              answers: askUserAnswers,
+            });
+            setAskUserAnswers({});
+          }}
+          onSkip={() => {
+            onPermissionDecision?.(permissionRequest.id, 'deny');
+            setAskUserAnswers({});
+          }}
         />
       )}
     </form>

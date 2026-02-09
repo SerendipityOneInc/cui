@@ -6,6 +6,8 @@ import { Header } from './Header';
 import { Composer, ComposerRef } from '@/web/chat/components/Composer';
 import { TaskTabs } from './TaskTabs';
 import { TaskList } from './TaskList';
+import { SkillChips } from '../Skills/SkillChips';
+import type { Skill } from '../Skills/skills-data';
 
 export function Home() {
   const navigate = useNavigate();
@@ -98,6 +100,10 @@ export function Home() {
     ? conversations[0].projectPath
     : '/workspace';
 
+  const handleSkillSelect = (skill: Skill) => {
+    composerRef.current?.setInput(skill.prompt);
+  };
+
   const handleComposerSubmit = async (text: string, workingDirectory: string, model: string, permissionMode: string) => {
     setIsSubmitting(true);
     
@@ -185,7 +191,9 @@ export function Home() {
                 />
               </div>
 
-              <TaskTabs 
+              <SkillChips onSkillSelect={handleSkillSelect} />
+
+              <TaskTabs
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
               />
