@@ -56,9 +56,36 @@ export function ToolContent({
   const isError = toolResult?.is_error === true;
   const isPending = toolResult?.status === 'pending';
 
-  // Skip rendering for pending tools
+  // Show progress indicator for pending tools
   if (isPending) {
-    return null;
+    const getPendingLabel = () => {
+      switch (toolName) {
+        case 'Task': return 'Running task';
+        case 'Skill': return 'Loading skill';
+        case 'Bash': return 'Running command';
+        case 'WebSearch': return 'Searching';
+        case 'WebFetch': return 'Fetching';
+        case 'Read': return 'Reading';
+        case 'Edit': case 'MultiEdit': return 'Editing';
+        case 'Write': return 'Writing';
+        case 'Grep': case 'Glob': case 'LS': return 'Searching';
+        default: return 'Working';
+      }
+    };
+
+    return (
+      <div className="flex items-center gap-1 -mt-0.5">
+        <CornerDownRight size={12} className="text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">
+          {getPendingLabel()}
+          <span className="inline-flex w-[1.5em]">
+            <span className="animate-[dotPulse_1.4s_infinite_0s]">.</span>
+            <span className="animate-[dotPulse_1.4s_infinite_0.2s]">.</span>
+            <span className="animate-[dotPulse_1.4s_infinite_0.4s]">.</span>
+          </span>
+        </span>
+      </div>
+    );
   }
 
   // Handle error display at root level

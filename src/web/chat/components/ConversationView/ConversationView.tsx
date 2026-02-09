@@ -248,12 +248,12 @@ export function ConversationView() {
     }
   };
 
-  const handlePermissionDecision = async (requestId: string, action: 'approve' | 'deny', denyReason?: string) => {
+  const handlePermissionDecision = async (requestId: string, action: 'approve' | 'deny', denyReason?: string, modifiedInput?: Record<string, unknown>) => {
     if (isPermissionDecisionLoading) return;
 
     setIsPermissionDecisionLoading(true);
     try {
-      await api.sendPermissionDecision(requestId, { action, denyReason });
+      await api.sendPermissionDecision(requestId, { action, denyReason, modifiedInput });
       // Clear the permission request after successful decision
       clearPermissionRequest();
     } catch (err: any) {

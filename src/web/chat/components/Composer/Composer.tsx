@@ -56,7 +56,7 @@ export interface ComposerProps {
 
   // Permission handling
   permissionRequest?: PermissionRequest | null;
-  onPermissionDecision?: (requestId: string, action: 'approve' | 'deny', denyReason?: string) => void;
+  onPermissionDecision?: (requestId: string, action: 'approve' | 'deny', denyReason?: string, modifiedInput?: Record<string, unknown>) => void;
 
   // Stop functionality
   onStop?: () => void;
@@ -351,6 +351,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
     focusedIndex: -1,
     type: 'file',
   });
+  const [askUserAnswers, setAskUserAnswers] = useState<Record<string, string>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   
@@ -1009,7 +1010,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
               )
             )}
             
-            {permissionRequest && showPermissionUI ? (
+            {permissionRequest && showPermissionUI && permissionRequest.toolName !== 'AskUserQuestion' ? (
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -1132,9 +1133,21 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
       
       {/* Permission Dialog */}
       {permissionRequest && showPermissionUI && (
-        <PermissionDialog 
+        <PermissionDialog
           permissionRequest={permissionRequest}
           isVisible={true}
+          onAnswersChange={setAskUserAnswers}
+          onSubmit={() => {
+            onPermissionDecision?.(permissionRequest.id, 'approve', undefined, {
+              ...permissionRequest.toolInput,
+              answers: askUserAnswers,
+            });
+            setAskUserAnswers({});
+          }}
+          onSkip={() => {
+            onPermissionDecision?.(permissionRequest.id, 'deny');
+            setAskUserAnswers({});
+          }}
         />
       )}
     </form>
