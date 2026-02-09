@@ -72,6 +72,7 @@ export interface ComposerProps {
 
 export interface ComposerRef {
   focusInput: () => void;
+  setInput: (text: string) => void;
 }
 
 interface DirectoryDropdownProps {
@@ -365,12 +366,29 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
     audioData
   } = useAudioRecording();
 
-  // Expose focusInput method via ref
+  // Expose focusInput and setInput methods via ref
   useImperativeHandle(ref, () => ({
     focusInput: () => {
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
+    },
+    setInput: (text: string) => {
+      setValue(text);
+      // Focus and position cursor at first placeholder
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const placeholderMatch = text.match(/\[([^\]]+)\]/);
+          if (placeholderMatch && placeholderMatch.index !== undefined) {
+            textareaRef.current.setSelectionRange(
+              placeholderMatch.index,
+              placeholderMatch.index + placeholderMatch[0].length
+            );
+          }
+          adjustTextareaHeight();
+        }
+      }, 0);
     }
   }), []);
 
