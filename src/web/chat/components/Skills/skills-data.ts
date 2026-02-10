@@ -37,7 +37,7 @@ export const FEATURED_SKILLS: Skill[] = [
     name: 'Generate Image',
     icon: '🎨',
     description: 'Generate images using AI - blog graphics, thumbnails, illustrations, and more',
-    prompt: 'Generate an image: [describe what you want - style, mood, colors, composition]',
+    prompt: 'Use nano banana to generate an image: [describe what you want - style, mood, colors, composition]',
     source: 'builtin',
   },
   {
