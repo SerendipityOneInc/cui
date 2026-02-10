@@ -209,6 +209,10 @@ class ApiService {
     return this.apiCall('/api/config');
   }
 
+  async getWorkspaceConfig(): Promise<{ enabled: boolean; baseUrl: string | null; projectName: string | null }> {
+    return this.apiCall('/api/config/workspace');
+  }
+
   async updateConfig(updates: Partial<any>): Promise<any> {
     return this.apiCall('/api/config', {
       method: 'PUT',
