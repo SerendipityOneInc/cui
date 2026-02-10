@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **File Preview for Workspace Files**: Inline preview of output files in chat messages
   - Auto-detect `/workspace/` paths in assistant messages and convert to clickable R2 URLs
+  - Support relative paths with known extensions (e.g. `nanobanana-output/image.png`) — auto-mapped under `/workspace/`
   - Images render inline with click-to-enlarge
   - Preview modal for HTML, Markdown, and PDF files (iframe/rendered view)
   - "Open in new tab" button for all previewable files
