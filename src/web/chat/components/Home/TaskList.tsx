@@ -53,6 +53,13 @@ export function TaskList({
     if (renamingSessionId === sessionId) {
       return;
     }
+
+    // Validate session ID before navigation
+    if (!sessionId || sessionId === 'undefined') {
+      console.error('[TaskList] Invalid session ID for navigation:', sessionId);
+      return;
+    }
+
     navigate(`/c/${sessionId}`);
   };
 

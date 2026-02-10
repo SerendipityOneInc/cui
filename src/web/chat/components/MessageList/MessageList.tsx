@@ -93,11 +93,14 @@ export const MessageList: React.FC<MessageListProps> = ({
         ))}
         
         {isLoading && displayMessages.length === 0 && (
-          <div className="flex items-center justify-center p-8">
-            <div className="flex gap-1">
-              <span className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.32s]" aria-label="Loading dot 1"></span>
-              <span className="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.16s]" aria-label="Loading dot 2"></span>
-              <span className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" aria-label="Loading dot 3"></span>
+          <div className="flex items-start px-4 mt-8">
+            <div className="text-sm text-muted-foreground" aria-label="Initializing conversation">
+              <span>Starting conversation</span>
+              <span className="inline-flex w-[1.5em]">
+                <span className="animate-[dotPulse_1.4s_infinite_0s]">.</span>
+                <span className="animate-[dotPulse_1.4s_infinite_0.2s]">.</span>
+                <span className="animate-[dotPulse_1.4s_infinite_0.4s]">.</span>
+              </span>
             </div>
           </div>
         )}

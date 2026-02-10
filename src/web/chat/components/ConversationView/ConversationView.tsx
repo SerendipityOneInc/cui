@@ -46,8 +46,16 @@ export function ConversationView() {
   } = useConversationMessages({
     onSystemInit: (systemInit: SystemInitMessage) => {
       // System init received via SSE — now we have the sessionId
-      const newSessionId = systemInit.session_id;
-      if (newSessionId && !sessionId) {
+      const newSessionId = systemInit?.session_id;
+
+      // Validate session ID before proceeding
+      if (!newSessionId || typeof newSessionId !== 'string' || newSessionId === 'undefined') {
+        console.error('[ConversationView] Invalid session ID in system init:', { systemInit, newSessionId });
+        setError('Failed to initialize conversation: invalid session ID');
+        return;
+      }
+
+      if (!sessionId) {
         setSessionId(newSessionId);
         setCurrentWorkingDirectory(systemInit.cwd);
         setConversationTitle('Conversation');
