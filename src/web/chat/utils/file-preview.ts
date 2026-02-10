@@ -37,46 +37,74 @@ export function isPreviewable(filePath: string): boolean {
 }
 
 /**
- * Map a /workspace/ path to a full R2 public URL
- * Returns null if config is not enabled or path doesn't match
+ * Map a workspace path to a full R2 public URL.
+ * Supports both absolute (/workspace/...) and relative paths (dir/file.png).
+ * Relative paths are treated as being under /workspace/.
+ * Returns null if config is not enabled or path doesn't match.
  */
 export function mapWorkspacePath(localPath: string, config: FilePreviewConfig): string | null {
   if (!config.enabled || !config.baseUrl || !config.projectName) return null;
-  if (!localPath.startsWith('/workspace/')) return null;
 
-  // /workspace/output/file.png → {baseUrl}/{projectName}/workspace/output/file.png
-  return `${config.baseUrl}/${config.projectName}${localPath}`;
+  if (localPath.startsWith('/workspace/')) {
+    // /workspace/output/file.png → {baseUrl}/{projectName}/workspace/output/file.png
+    return `${config.baseUrl}/${config.projectName}${localPath}`;
+  }
+
+  // Relative path: dir/file.png → {baseUrl}/{projectName}/workspace/dir/file.png
+  if (!localPath.startsWith('/') && !localPath.startsWith('http')) {
+    return `${config.baseUrl}/${config.projectName}/workspace/${localPath}`;
+  }
+
+  return null;
 }
 
 /**
- * Pre-process message text to convert bare /workspace/ paths into markdown links.
+ * Pre-process message text to convert workspace file paths into markdown links.
  *
  * Matches patterns like:
- *   /workspace/output/report.html
- *   `/workspace/output/report.html`
+ *   /workspace/output/report.html        (absolute workspace path)
+ *   `/workspace/output/report.html`      (backtick-wrapped)
+ *   nanobanana-output/image.png          (relative path with known extension)
+ *   output/report.pdf                    (relative path with known extension)
  *
- * Converts to: [report.html](/workspace/output/report.html)
+ * Converts to: [filename](/workspace/...) or [filename](relative/path)
  *
  * Skips paths already inside markdown link syntax [text](url) or ![alt](url).
  */
 export function preprocessFileLinks(text: string, config: FilePreviewConfig): string {
   if (!config.enabled) return text;
 
-  // Match /workspace/ paths that are NOT already inside markdown link parentheses
-  // Negative lookbehind for ]( and ![ patterns
-  return text.replace(
+  // 1. Match absolute /workspace/ paths
+  let result = text.replace(
     /(?<!\]\()(?<!\()(`?)(\/(workspace\/[^\s`'")>\]]+))(`?)/g,
-    (_match, backtickOpen: string, fullPath: string, _inner: string, backtickClose: string) => {
+    (_match, _backtickOpen: string, fullPath: string) => {
       const fileName = fullPath.split('/').pop() || fullPath;
-
-      // If it was wrapped in backticks, replace the backticks with a link
-      if (backtickOpen && backtickClose) {
-        return `[${fileName}](${fullPath})`;
-      }
-
       return `[${fileName}](${fullPath})`;
     }
   );
+
+  // 2. Match relative paths with known previewable extensions
+  // Pattern: word-chars/path/file.ext where ext is a known type
+  // Negative lookbehind to avoid matching inside existing markdown links or URLs
+  const previewableExts = 'png|jpg|jpeg|gif|svg|webp|bmp|ico|html|htm|md|markdown|pdf';
+  const relativePathRegex = new RegExp(
+    `(?<![\\](!/])(?<![\\w/.])` +                          // not inside link or preceded by path chars
+    `(\`?)` +                                               // optional opening backtick
+    `([\\w][\\w./-]*\\.(?:${previewableExts}))` +          // relative path with known extension
+    `(\`?)` +                                               // optional closing backtick
+    `(?![\\w/])`,                                           // not followed by path chars
+    'gi'
+  );
+
+  result = result.replace(
+    relativePathRegex,
+    (_match, _backtickOpen: string, relativePath: string) => {
+      const fileName = relativePath.split('/').pop() || relativePath;
+      return `[${fileName}](${relativePath})`;
+    }
+  );
+
+  return result;
 }
 
 function getExtension(filePath: string): string {
