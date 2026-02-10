@@ -5,6 +5,26 @@ All notable changes to CUI (Claude UI) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2-srp] - 2026-02-10
+
+### Added
+- **File Preview for Workspace Files**: Inline preview of output files in chat messages
+  - Auto-detect `/workspace/` paths in assistant messages and convert to clickable R2 URLs
+  - Images render inline with click-to-enlarge
+  - Preview modal for HTML, Markdown, and PDF files (iframe/rendered view)
+  - "Open in new tab" button for all previewable files
+  - Workspace config via `~/.cui/config.json` or `CUI_WORKSPACE_BASE_URL` / `CUI_WORKSPACE_PROJECT_NAME` env vars
+  - New API endpoint `GET /api/config/workspace`
+  - Module-level caching for workspace config to avoid redundant API calls
+
+### Fixed
+- **Undefined Session Navigation**: Prevented `/c/undefined` URL when creating new conversations
+  - Added defensive validation of `session_id` in ConversationView before navigation
+  - Added session ID validation in TaskList click handler
+
+### Changed
+- Replaced bare "..." loading dots during chat initialization with "Starting conversation..." text with animated dots
+
 ## [0.7.0-srp] - 2026-02-09
 
 ### Added
