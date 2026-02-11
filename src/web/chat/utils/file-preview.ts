@@ -74,21 +74,18 @@ export function mapWorkspacePath(localPath: string, config: FilePreviewConfig): 
 export function preprocessFileLinks(text: string, config: FilePreviewConfig): string {
   if (!config.enabled) return text;
 
-  // 1. Match absolute /workspace/ paths
-  let result = text.replace(
-    /(?<!\]\()(?<!\()(`?)(\/(workspace\/[^\s`'")>\]]+))(`?)/g,
-    (_match, _backtickOpen: string, fullPath: string) => {
-      const fileName = fullPath.split('/').pop() || fullPath;
-      return `[${fileName}](${fullPath})`;
-    }
-  );
+  // IMPORTANT: Relative paths must be processed BEFORE absolute paths.
+  // If absolute paths are processed first, the created markdown links like
+  // [file.png](/workspace/nanobanana-output/file.png) get corrupted by the
+  // relative path regex matching partial paths (e.g. "output/file.png" after
+  // the hyphen in "nanobanana-output").
 
-  // 2. Match relative paths with known previewable extensions
+  // 1. Match relative paths with known previewable extensions
   // Pattern: word-chars/path/file.ext where ext is a known type
   // Negative lookbehind to avoid matching inside existing markdown links or URLs
   const previewableExts = 'png|jpg|jpeg|gif|svg|webp|bmp|ico|html|htm|md|markdown|pdf';
   const relativePathRegex = new RegExp(
-    `(?<![\\](!/])(?<![\\w/.])` +                          // not inside link or preceded by path chars
+    `(?<![\\[\\](!/])(?<![\\w/.\\-])` +                    // not inside link or preceded by path/hyphen chars
     `(\`?)` +                                               // optional opening backtick
     `([\\w][\\w./-]*\\.(?:${previewableExts}))` +          // relative path with known extension
     `(\`?)` +                                               // optional closing backtick
@@ -96,11 +93,20 @@ export function preprocessFileLinks(text: string, config: FilePreviewConfig): st
     'gi'
   );
 
-  result = result.replace(
+  let result = text.replace(
     relativePathRegex,
     (_match, _backtickOpen: string, relativePath: string) => {
       const fileName = relativePath.split('/').pop() || relativePath;
       return `[${fileName}](${relativePath})`;
+    }
+  );
+
+  // 2. Match absolute /workspace/ paths
+  result = result.replace(
+    /(?<!\]\()(?<!\()(`?)(\/(workspace\/[^\s`'")>\]]+))(`?)/g,
+    (_match, _backtickOpen: string, fullPath: string) => {
+      const fileName = fullPath.split('/').pop() || fullPath;
+      return `[${fileName}](${fullPath})`;
     }
   );
 
