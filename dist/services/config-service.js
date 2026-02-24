@@ -144,6 +144,8 @@ export class ConfigService {
             // Final validation on fully merged config
             this.validateCompleteConfig(merged);
             this.config = merged;
+            // Apply environment variable overrides (e.g. for E2B sandbox)
+            this.applyEnvOverrides();
             this.lastLoadedRaw = JSON.stringify(this.config, null, 2);
             if (updated) {
                 fs.writeFileSync(this.configPath, this.lastLoadedRaw, 'utf-8');
@@ -322,6 +324,29 @@ export class ConfigService {
                 if (typeof v !== 'string')
                     throw new Error(`Invalid config: router.rules['${k}'] must be a string`);
             }
+        }
+    }
+    /**
+     * Apply environment variable overrides to config.
+     * Used in E2B sandbox where config is injected via env vars.
+     */
+    applyEnvOverrides() {
+        if (!this.config)
+            return;
+        const baseUrl = process.env.CUI_WORKSPACE_BASE_URL;
+        const projectName = process.env.CUI_WORKSPACE_PROJECT_NAME;
+        if (baseUrl && projectName) {
+            this.config.workspace = {
+                baseUrl: baseUrl.replace(/\/$/, ''), // strip trailing slash
+                projectName,
+            };
+            this.logger.info('File preview config set from environment variables', {
+                baseUrl: this.config.workspace.baseUrl,
+                projectName: this.config.workspace.projectName,
+            });
+        }
+        else if (baseUrl || projectName) {
+            this.logger.warn('Partial file preview env vars: both CUI_WORKSPACE_BASE_URL and CUI_WORKSPACE_PROJECT_NAME are required');
         }
     }
     startWatching() {

@@ -58,6 +58,11 @@ export declare class ConfigService {
     private assertServerConfig;
     private assertInterfaceConfig;
     private assertRouterConfig;
+    /**
+     * Apply environment variable overrides to config.
+     * Used in E2B sandbox where config is injected via env vars.
+     */
+    private applyEnvOverrides;
     private startWatching;
     private handleExternalChange;
     /**

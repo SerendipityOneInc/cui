@@ -31,6 +31,20 @@ export interface InterfaceConfig {
         };
     };
 }
+export interface WorkspaceConfig {
+    /**
+     * Base URL for R2 public access
+     * Example: "https://pub-445e9780e6fc45f48a3a2a8953b60fae.r2.dev"
+     * Can also be set via CUI_WORKSPACE_BASE_URL environment variable
+     */
+    baseUrl: string;
+    /**
+     * Project name prefix in R2 bucket path
+     * Example: "proj_04322438"
+     * Can also be set via CUI_WORKSPACE_PROJECT_NAME environment variable
+     */
+    projectName: string;
+}
 export interface CUIConfig {
     /**
      * Unique machine identifier
@@ -59,6 +73,11 @@ export interface CUIConfig {
      * Interface preferences and settings
      */
     interface: InterfaceConfig;
+    /**
+     * Workspace configuration for R2-backed workspace files (optional)
+     * When configured, /workspace/ paths in messages become clickable R2 URLs
+     */
+    workspace?: WorkspaceConfig;
 }
 /**
  * Default configuration values

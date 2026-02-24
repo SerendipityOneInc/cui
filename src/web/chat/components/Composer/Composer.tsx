@@ -696,7 +696,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
 
     onSubmit(
       trimmedValue,
-      showDirectorySelector ? selectedDirectory : undefined,
+      selectedDirectory !== 'Select directory' ? selectedDirectory : undefined,
       showModelSelector ? selectedModel : undefined,
       permissionMode
     );
@@ -1053,65 +1053,19 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
               </TooltipProvider>
             ) : audioState === 'idle' && (
               <div className="flex items-center gap-2">
-                {/* Combined Permission Mode Button with Dropdown */}
-                <div className={`flex items-center rounded-full overflow-hidden ${
-                  (!value.trim() || isLoading || disabled || (showDirectorySelector && selectedDirectory === 'Select directory'))
-                    ? 'bg-foreground/5 text-foreground/50'
-                    : 'bg-foreground text-background'
-                }`}>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          className="h-8 min-w-[48px] w-[48px] px-3 py-0.5 bg-transparent text-inherit hover:bg-white/10 border-0 shadow-none"
-                          disabled={!value.trim() || isLoading || disabled || (showDirectorySelector && selectedDirectory === 'Select directory')}
-                          onClick={() => handleSubmit(selectedPermissionMode)}
-                        >
-                          {isLoading ? <Loader2 size={14} className="animate-spin" /> : getPermissionModeLabel(selectedPermissionMode)}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{getPermissionModeTitle(selectedPermissionMode)}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <DropdownSelector
-                    options={[
-                      { value: 'default', label: 'Ask', description: 'Ask before making changes' },
-                      { value: 'acceptEdits', label: 'Auto', description: 'Apply edits automatically' },
-                      { value: 'bypassPermissions', label: 'Yolo', description: 'No permission prompts' },
-                      { value: 'plan', label: 'Plan', description: 'Planning mode only' },
-                    ]}
-                    value={selectedPermissionMode}
-                    onChange={setSelectedPermissionMode}
-                    isOpen={isPermissionDropdownOpen}
-                    onOpenChange={setIsPermissionDropdownOpen}
-                    showFilterInput={false}
-                    renderOption={(option) => (
-                      <div className="flex flex-col items-start gap-0.5 w-full">
-                        <div className="flex items-center gap-2">
-                          {getPermissionModeIcon(option.value)}
-                          <span className="text-sm font-medium">{option.label}</span>
-                        </div>
-                        {option.description && (
-                          <span className="text-xs text-muted-foreground/80 pl-[22px]">{option.description}</span>
-                        )}
-                      </div>
-                    )}
-                    renderTrigger={({ onClick }) => (
-                      <Button
-                        type="button"
-                        className="w-8 h-8 bg-transparent text-inherit border-l border-white/20 opacity-80 hover:opacity-100 hover:bg-white/10 border-0 shadow-none rounded-none flex items-center justify-center p-0"
-                        onClick={onClick}
-                        disabled={!value.trim() || isLoading || disabled || (showDirectorySelector && selectedDirectory === 'Select directory')}
-                        aria-label="Select permission mode"
-                      >
-                        <ChevronDown size={14} />
-                      </Button>
-                    )}
-                  />
-                </div>
+                {/* Run Button - fixed to bypassPermissions mode */}
+                <Button
+                  type="button"
+                  className={`h-8 min-w-[48px] px-4 py-0.5 rounded-full border-0 shadow-none ${
+                    (!value.trim() || isLoading || disabled || (showDirectorySelector && selectedDirectory === 'Select directory'))
+                      ? 'bg-foreground/5 text-foreground/50'
+                      : 'bg-foreground text-background hover:bg-foreground/90'
+                  }`}
+                  disabled={!value.trim() || isLoading || disabled || (showDirectorySelector && selectedDirectory === 'Select directory')}
+                  onClick={() => handleSubmit('bypassPermissions')}
+                >
+                  {isLoading ? <Loader2 size={14} className="animate-spin" /> : 'Run'}
+                </Button>
               </div>
             )}
           </div>

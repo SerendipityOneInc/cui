@@ -159,7 +159,7 @@ export function Home() {
                   onSubmit={handleComposerSubmit}
                   isLoading={isSubmitting}
                   placeholder="Describe your task"
-                  showDirectorySelector={true}
+                  showDirectorySelector={false}
                   showModelSelector={true}
                   enableFileAutocomplete={true}
                   recentDirectories={recentDirectories}
