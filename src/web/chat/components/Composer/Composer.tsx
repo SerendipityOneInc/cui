@@ -759,7 +759,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
     } else if (e.key === 'Enter') {
       if (e.metaKey || e.ctrlKey) {
         e.preventDefault();
-        handleSubmit(selectedPermissionMode);
+        handleSubmit('bypassPermissions');
       }
     }
   };
@@ -867,7 +867,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
       className="w-full relative" 
       onSubmit={(e) => {
         e.preventDefault();
-        handleSubmit(selectedPermissionMode);
+        handleSubmit('bypassPermissions');
       }}
     >
       <div className="flex flex-col items-center justify-center w-full bg-transparent border border-border rounded-3xl shadow-sm cursor-text transition-all duration-300">
