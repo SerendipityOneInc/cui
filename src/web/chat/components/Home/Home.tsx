@@ -95,10 +95,10 @@ export function Home() {
   }, [loadConversations, activeTab]);
 
   // Get the most recent working directory from conversations
-  // Default to /workspace when no conversations exist
+  // Default to /home/user for faster startup (avoids s3fs-mounted /workspace as cwd)
   const recentWorkingDirectory = conversations.length > 0
     ? conversations[0].projectPath
-    : '/workspace';
+    : '/home/user';
 
   const handleSkillSelect = (skill: Skill) => {
     composerRef.current?.setInput(skill.prompt);
