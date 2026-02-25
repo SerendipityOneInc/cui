@@ -1145,9 +1145,9 @@ export class ClaudeProcessManager extends EventEmitter {
     
     this.processes.delete(streamingId);
     this.outputBuffers.delete(streamingId);
-    const config = this.conversationConfigs.get(streamingId);
+    const _config = this.conversationConfigs.get(streamingId);
     this.conversationConfigs.delete(streamingId);
-    
+
     // Get session ID from conversation status or config
     const sessionId = this.statusTracker.getSessionId(streamingId) || 'unknown';
 
