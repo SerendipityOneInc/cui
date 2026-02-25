@@ -1,6 +1,6 @@
 {
   "name": "cui-server",
-  "version": "0.7.6-srp",
+  "version": "0.7.7-srp",
   "type": "module",
   "description": "Web UI Agent Platform based on Claude Code",
   "main": "dist/cui-server.js",

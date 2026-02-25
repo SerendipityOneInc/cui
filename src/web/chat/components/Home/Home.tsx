@@ -11,16 +11,16 @@ import type { Skill } from '../Skills/skills-data';
 
 export function Home() {
   const navigate = useNavigate();
-  const { 
-    conversations, 
-    loading, 
-    loadingMore, 
-    hasMore, 
-    error, 
-    loadConversations, 
+  const {
+    conversations,
+    loading,
+    loadingMore,
+    hasMore,
+    error,
+    loadConversations,
     loadMoreConversations,
     recentDirectories,
-    getMostRecentWorkingDirectory 
+    getMostRecentWorkingDirectory
   } = useConversations();
   const [activeTab, setActiveTab] = useState<'tasks' | 'history' | 'archive'>('tasks');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,12 +52,12 @@ export function Home() {
     if (conversationCountRef.current > 0) {
       loadConversations(conversationCountRef.current, getFiltersForTab(activeTab));
     }
-    
+
     // Focus the input after a brief delay to ensure DOM is ready
     const timer = setTimeout(() => {
       composerRef.current?.focusInput();
     }, 100);
-    
+
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array means this runs only on mount
@@ -106,7 +106,7 @@ export function Home() {
 
   const handleComposerSubmit = async (text: string, workingDirectory: string, model: string, permissionMode: string) => {
     setIsSubmitting(true);
-    
+
     try {
       const response = await api.startConversation({
         workingDirectory,
@@ -151,9 +151,9 @@ export function Home() {
                 </div>
                 <h1 className="text-2xl font-semibold font-sans text-foreground">What is the next task?</h1>
               </div>
-              
+
               <div className="w-full">
-                <Composer 
+                <Composer
                   ref={composerRef}
                   workingDirectory={recentWorkingDirectory}
                   onSubmit={handleComposerSubmit}
@@ -193,21 +193,26 @@ export function Home() {
 
               <SkillChips onSkillSelect={handleSkillSelect} />
 
-              <TaskTabs
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-              />
+              {/* Hidden: conversation list is now managed by agent-platform D1 */}
+              <div className="hidden">
+                <TaskTabs
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                />
+              </div>
             </div>
 
-            <TaskList 
-              conversations={conversations}
-              loading={loading}
-              loadingMore={loadingMore}
-              hasMore={hasMore}
-              error={error}
-              activeTab={activeTab}
-              onLoadMore={(filters) => loadMoreConversations(filters)}
-            />
+            <div className="hidden">
+              <TaskList
+                conversations={conversations}
+                loading={loading}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                error={error}
+                activeTab={activeTab}
+                onLoadMore={(filters) => loadMoreConversations(filters)}
+              />
+            </div>
           </div>
         </div>
       </main>

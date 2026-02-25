@@ -5,6 +5,16 @@ All notable changes to CUI (Claude UI) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7-srp] - 2026-02-25
+
+### Changed
+- **Hide Task List on Home**: Conversation history is now managed by agent-platform D1, task tabs (Tasks/History/Archive) hidden from Home page
+- **Inline Skill Browser**: Replaced modal-based skill library with inline expandable panel below skill chips, with scrollable content and search
+- **Reorganized Skills**: Skills reorganized based on ECAP templates and SRP marketplace plugins
+  - Featured chips: Generate Image, Lark Docs, SEO Optimize, Create Webpage
+  - Extended panel: 14 skills across AllStaff, Developer, DevOps, Misc, Creative, Web/Marketing categories
+  - All skill prompts now include placeholder hints for better UX
+
 ## [0.7.6-srp] - 2026-02-25
 
 ### Added
