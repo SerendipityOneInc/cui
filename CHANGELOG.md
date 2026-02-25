@@ -5,6 +5,30 @@ All notable changes to CUI (Claude UI) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.6-srp] - 2026-02-25
+
+### Added
+- **Conversation Sync to Agent Platform**: Push conversation metadata to agent-platform on session end
+  - New `ConversationSyncService` pushes summaries to agent-platform D1 via `/api/conversations/sync`
+  - Syncs on individual session end and bulk sync of all history on CUI startup
+  - Configured via `CUI_SYNC_API_URL`, `CUI_SYNC_API_KEY`, and `CUI_WORKSPACE_PROJECT_NAME` env vars
+
+## [0.7.5-srp] - 2026-02-24
+
+### Changed
+- **Simplified Home UI**: Hide workspace selector (defaults to `/workspace`), hide settings button
+- **Run Button**: Replace permission mode dropdown with fixed "Run" button (`bypassPermissions`)
+
+### Fixed
+- **Permission Bypass**: Use `--dangerously-skip-permissions` CLI flag instead of `--permission-mode bypassPermissions` which did not actually skip permission checks
+- **Resume Permissions**: Ensure resumed conversations also use `bypassPermissions` mode (Cmd+Enter and form submit were still using cached default mode)
+- Skip `--permission-prompt-tool` in bypassPermissions mode to prevent permission requests from being forwarded to CUI UI
+
+## [0.7.4-srp] - 2026-02-11
+
+### Fixed
+- Prevent relative path regex from corrupting absolute workspace path links
+
 ## [0.7.3-srp] - 2026-02-10
 
 ### Changed
