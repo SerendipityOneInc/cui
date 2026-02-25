@@ -15,6 +15,7 @@ import { FileSystemService } from './file-system-service.js';
 import { NotificationService } from './notification-service.js';
 import path from 'path';
 import { ClaudeRouterService } from './claude-router-service.js';
+import { ConversationSyncService } from './conversation-sync-service.js';
 
 // Get the directory of this module
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +41,7 @@ export class ClaudeProcessManager extends EventEmitter {
   private fileSystemService?: FileSystemService;
   private notificationService?: NotificationService;
   private routerService?: ClaudeRouterService;
+  private conversationSyncService: ConversationSyncService = new ConversationSyncService();
 
   constructor(historyReader: ClaudeHistoryReader, statusTracker: ConversationStatusManager, claudeExecutablePath?: string, envOverrides?: Record<string, string | undefined>, toolMetricsService?: ToolMetricsService, sessionInfoService?: SessionInfoService, fileSystemService?: FileSystemService) {
     super();
@@ -1146,27 +1148,45 @@ export class ClaudeProcessManager extends EventEmitter {
     const config = this.conversationConfigs.get(streamingId);
     this.conversationConfigs.delete(streamingId);
     
-    // Send notification if service is available
-    if (this.notificationService && config) {
-      // Get session ID from conversation status or config
-      const sessionId = this.statusTracker.getSessionId(streamingId) || 'unknown';
-      
-      // Try to get conversation metadata for summary
+    // Get session ID from conversation status or config
+    const sessionId = this.statusTracker.getSessionId(streamingId) || 'unknown';
+
+    // Send notification and sync conversation data
+    if (sessionId !== 'unknown') {
       this.historyReader.getConversationMetadata(sessionId)
         .then((metadata) => {
+          // Send notification if service is available
           if (this.notificationService && metadata) {
-            return this.notificationService.sendConversationEndNotification(
+            this.notificationService.sendConversationEndNotification(
               streamingId,
               sessionId,
               metadata.summary
-            );
+            ).catch((error: Error) => {
+              this.logger.error('Failed to send conversation end notification', error);
+            });
+          }
+
+          // Sync conversation to agent-platform
+          if (this.conversationSyncService.isEnabled && metadata) {
+            this.conversationSyncService.syncSession({
+              session_id: sessionId,
+              summary: metadata.summary || '',
+              model: metadata.model || '',
+              message_count: 0, // not available from metadata
+              total_duration_ms: metadata.totalDuration || 0,
+              status: 'completed',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }).catch((error: Error) => {
+              this.logger.error('Failed to sync conversation', error);
+            });
           }
         })
         .catch((error: Error) => {
-          this.logger.error('Failed to send conversation end notification', error);
+          this.logger.error('Failed to get conversation metadata', error);
         });
     }
-    
+
     this.emit('process-closed', { streamingId, code });
   }
 

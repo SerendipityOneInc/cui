@@ -38,6 +38,7 @@ import { createWorkingDirectoriesRoutes } from './routes/working-directories.rou
 import { createConfigRoutes } from './routes/config.routes.js';
 import { createGeminiRoutes } from './routes/gemini.routes.js';
 import { createNotificationsRoutes } from './routes/notifications.routes.js';
+import { ConversationSyncService } from './services/conversation-sync-service.js';
 import { createSkillsRoutes } from './routes/skills.routes.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
@@ -229,6 +230,16 @@ export class CUIServer {
           this.logger.error('Failed to reload router after config change', error);
         }
       });
+
+      // Bulk sync existing conversations to agent-platform (non-blocking)
+      const syncService = new ConversationSyncService();
+      if (syncService.isEnabled) {
+        syncService.syncAll(this.historyReader).catch((error) => {
+          this.logger.warn('Bulk conversation sync failed during startup', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }
     } catch (error) {
       this.logger.error('Failed to initialize server:', error, {
         errorType: error instanceof Error ? error.constructor.name : typeof error,

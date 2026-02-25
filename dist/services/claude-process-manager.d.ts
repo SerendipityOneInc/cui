@@ -27,6 +27,7 @@ export declare class ClaudeProcessManager extends EventEmitter {
     private fileSystemService?;
     private notificationService?;
     private routerService?;
+    private conversationSyncService;
     constructor(historyReader: ClaudeHistoryReader, statusTracker: ConversationStatusManager, claudeExecutablePath?: string, envOverrides?: Record<string, string | undefined>, toolMetricsService?: ToolMetricsService, sessionInfoService?: SessionInfoService, fileSystemService?: FileSystemService);
     setRouterService(service?: ClaudeRouterService): void;
     /**
