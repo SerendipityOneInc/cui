@@ -814,11 +814,9 @@ export class ClaudeProcessManager extends EventEmitter {
     // Add MCP config if available for resume
     if (this.mcpConfigPath) {
       args.push('--mcp-config', this.mcpConfigPath);
-      // Only add permission prompt tool when not bypassing permissions
-      if (config.permissionMode !== 'bypassPermissions') {
-        args.push('--permission-prompt-tool', 'mcp__cui-permissions__approval_prompt');
-        args.push('--allowedTools', 'mcp__cui-permissions__approval_prompt');
-      }
+      // Always add permission prompt tool so AskUserQuestion works even in bypassPermissions mode
+      args.push('--permission-prompt-tool', 'mcp__cui-permissions__approval_prompt');
+      args.push('--allowedTools', 'mcp__cui-permissions__approval_prompt');
     }
 
     this.logger.debug('Built Claude resume args', { args, hasMCPConfig: !!this.mcpConfigPath });
@@ -879,13 +877,11 @@ export class ClaudeProcessManager extends EventEmitter {
     // Add MCP config if available
     if (this.mcpConfigPath) {
       args.push('--mcp-config', this.mcpConfigPath);
-      // Only add permission prompt tool when not bypassing permissions
-      if (config.permissionMode !== 'bypassPermissions') {
-        args.push('--permission-prompt-tool', 'mcp__cui-permissions__approval_prompt');
-        const currentAllowedTools = config.allowedTools || [];
-        if (!currentAllowedTools.includes('mcp__cui-permissions__approval_prompt')) {
-          args.push('--allowedTools', 'mcp__cui-permissions__approval_prompt');
-        }
+      // Always add permission prompt tool so AskUserQuestion works even in bypassPermissions mode
+      args.push('--permission-prompt-tool', 'mcp__cui-permissions__approval_prompt');
+      const currentAllowedTools = config.allowedTools || [];
+      if (!currentAllowedTools.includes('mcp__cui-permissions__approval_prompt')) {
+        args.push('--allowedTools', 'mcp__cui-permissions__approval_prompt');
       }
     }
 

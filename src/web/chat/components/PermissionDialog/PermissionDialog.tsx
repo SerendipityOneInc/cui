@@ -21,18 +21,35 @@ export function PermissionDialog({ permissionRequest, isVisible, onAnswersChange
 
   if (isAskUserQuestion && onAnswersChange && onSubmit && onSkip) {
     const toolInput = permissionRequest.toolInput as {
+      question?: string;
       questions?: Array<{
         question: string;
         header: string;
         options: Array<{ label: string; description: string }>;
         multiSelect: boolean;
       }>;
+      options?: Array<{ label: string; description: string }>;
+      header?: string;
+      multiSelect?: boolean;
     };
 
-    if (toolInput.questions && Array.isArray(toolInput.questions)) {
+    // Handle questions array format
+    let questions = toolInput.questions;
+
+    // Handle single question format: { question, options, header, multiSelect }
+    if (!questions && toolInput.question) {
+      questions = [{
+        question: toolInput.question,
+        header: toolInput.header || 'Question',
+        options: Array.isArray(toolInput.options) ? toolInput.options : [],
+        multiSelect: toolInput.multiSelect || false,
+      }];
+    }
+
+    if (questions && Array.isArray(questions) && questions.length > 0) {
       return (
         <AskUserQuestionDialog
-          questions={toolInput.questions}
+          questions={questions}
           onAnswersChange={onAnswersChange}
           onSubmit={onSubmit}
           onSkip={onSkip}

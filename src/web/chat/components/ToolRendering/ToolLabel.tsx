@@ -113,10 +113,31 @@ export function ToolLabel({ toolName, toolInput, workingDirectory, onClick }: To
           </>
         );
       
+      case 'AskUserQuestion': {
+        const questions = toolInput.questions;
+        if (Array.isArray(questions) && questions.length > 0) {
+          const firstQ = questions[0]?.question || questions[0]?.header || '';
+          return (
+            <>
+              <span className="font-semibold">AskUserQuestion</span>
+              <span className="font-normal">({firstQ})</span>
+            </>
+          );
+        }
+        // Single question format
+        const question = toolInput.question || '';
+        return (
+          <>
+            <span className="font-semibold">AskUserQuestion</span>
+            <span className="font-normal">({typeof question === 'string' ? question : ''})</span>
+          </>
+        );
+      }
+
       case 'exit_plan_mode':
       case 'ExitPlanMode':
         return <span className="font-semibold">Plan</span>;
-      
+
       default:
         // Fallback for any unspecified tool
         return (

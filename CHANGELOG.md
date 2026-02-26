@@ -5,6 +5,22 @@ All notable changes to CUI (Claude UI) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.8-srp] - 2026-02-26
+
+### Added
+- **Skill scanning for slash autocomplete**: Scan `~/.claude/skills/`, `plugins/marketplaces/`, and `plugins/cache/` directories to show all available skills in `/` autocomplete
+- **Subdirectory command support**: Commands in `.claude/commands/subdir/file.md` now appear as `/subdir:file`
+- **AskUserQuestion support in bypassPermissions mode**: Always add `--permission-prompt-tool` so interactive skill questions (AskUserQuestion) route through CUI dialog instead of failing silently
+- **AskUserQuestion ToolLabel formatting**: Display question text instead of `[object Object]` in tool use labels
+- **Flexible AskUserQuestion dialog**: Support both `{ questions: [...] }` array format and `{ question, options }` single question format
+
+### Changed
+- **Unified skill prompt format**: All skill recommendation prompts now use `/skill-name` format consistently (e.g. `/nano-banana Generate an image...`)
+- **Removed non-functional builtin commands**: Removed `/clear`, `/compact`, `/init`, `/model`, `/permissions`, `/add-dir` from autocomplete — these are interactive-only commands that don't work in `-p` mode
+
+### Removed
+- **Create Diagram skill**: Removed from skill recommendations — `beautiful-mermaid` is a plugin, not a standalone skill
+
 ## [0.7.7-srp] - 2026-02-25
 
 ### Changed
