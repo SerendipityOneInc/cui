@@ -30,7 +30,7 @@ export const FEATURED_SKILLS: Skill[] = [
     name: 'SEO Optimize',
     icon: '🔍',
     description: 'Analyze keywords, technical SEO, and get actionable optimization reports',
-    prompt: '/seo Analyze and optimize [your website URL], including keywords, technical SEO, and actionable report',
+    prompt: '/seo:audit Analyze and optimize [your website URL], including keywords, technical SEO, and actionable report',
     source: 'builtin',
   },
   {
