@@ -142,9 +142,9 @@ export function SkillChips({ onSkillSelect }: SkillChipsProps) {
               </div>
             )}
 
-            {/* All Built-in Skills */}
+            {/* Featured Skills */}
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">All Skills</h3>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Featured Skills</h3>
               <div className="grid grid-cols-2 gap-2">
                 {ALL_BUILTIN_SKILLS.map((skill) => (
                   <SkillCard key={skill.id} skill={skill} onClick={handleSkillSelect} />

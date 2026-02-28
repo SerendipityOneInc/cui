@@ -23,6 +23,9 @@ export function Home() {
     getMostRecentWorkingDirectory
   } = useConversations();
   const [activeTab, setActiveTab] = useState<'tasks' | 'history' | 'archive'>('tasks');
+  const [showTaskList, setShowTaskList] = useState(() => {
+    try { return localStorage.getItem('cui-show-task-list') === 'true'; } catch { return false; }
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const conversationCountRef = useRef(conversations.length);
   const composerRef = useRef<ComposerRef>(null);
@@ -133,8 +136,8 @@ export function Home() {
 
       <main className="relative flex flex-1 w-full h-full overflow-hidden transition-all duration-[250ms] z-[1]">
         <div className="flex flex-col h-full w-full">
-          <div className="z-0 mx-auto flex flex-col w-full max-w-3xl h-full">
-            <div className="sticky top-0 z-50 flex flex-col items-center bg-background">
+          <div className="z-0 mx-auto flex flex-col w-full max-w-3xl h-full overflow-y-auto">
+            <div className="flex flex-col items-center bg-background">
               <div className="flex items-center gap-3 mb-4 pt-4">
                 <div className="flex items-center">
                   <div className="w-[27px] h-[27px] flex items-center justify-center">
@@ -193,16 +196,28 @@ export function Home() {
 
               <SkillChips onSkillSelect={handleSkillSelect} />
 
-              {/* Hidden: conversation list is now managed by agent-platform D1 */}
-              <div className="hidden">
+              {/* Toggle for task history */}
+              <button
+                type="button"
+                className="mt-2 mb-1 text-xs text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                onClick={() => {
+                  const next = !showTaskList;
+                  setShowTaskList(next);
+                  try { localStorage.setItem('cui-show-task-list', String(next)); } catch {}
+                }}
+              >
+                {showTaskList ? 'Hide history' : '...'}
+              </button>
+
+              {showTaskList && (
                 <TaskTabs
                   activeTab={activeTab}
                   onTabChange={setActiveTab}
                 />
-              </div>
+              )}
             </div>
 
-            <div className="hidden">
+            {showTaskList && (
               <TaskList
                 conversations={conversations}
                 loading={loading}
@@ -212,7 +227,7 @@ export function Home() {
                 activeTab={activeTab}
                 onLoadMore={(filters) => loadMoreConversations(filters)}
               />
-            </div>
+            )}
           </div>
         </div>
       </main>
