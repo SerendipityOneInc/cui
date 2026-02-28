@@ -429,10 +429,31 @@ export class ClaudeHistoryReader {
                 return summaries.get(message.uuid);
             }
         }
-        // Fallback to first user message content
-        const firstUserMessage = messages.find(msg => msg.type === 'user');
+        // Fallback to first user message content (skip command-name system messages)
+        const firstUserMessage = messages.find(msg => {
+            if (msg.type !== 'user')
+                return false;
+            const text = this.extractMessageContent(msg.message);
+            return !text.trim().startsWith('<command-name>') && !text.trim().startsWith('<local-command-stdout>');
+        }) || messages.find(msg => msg.type === 'user');
         if (firstUserMessage && firstUserMessage.message) {
-            const content = this.extractMessageContent(firstUserMessage.message);
+            let content = this.extractMessageContent(firstUserMessage.message);
+            // For skill/command invocations, build "skill-name: args" summary
+            const skillMatch = content.match(/<command-message>([\s\S]*?)<\/command-message>/);
+            const argsMatch = content.match(/<command-args>([\s\S]*?)<\/command-args>/);
+            if (skillMatch || argsMatch) {
+                const skillName = skillMatch ? skillMatch[1].trim() : '';
+                const args = argsMatch ? argsMatch[1].trim() : '';
+                content = skillName && args ? `${skillName}: ${args}` : args || skillName || 'Command invocation';
+            }
+            else {
+                content = content
+                    .replace(/<command-name>[\s\S]*?<\/command-name>/g, '')
+                    .replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g, '')
+                    .trim();
+                if (!content)
+                    content = 'Command invocation';
+            }
             return content.length > 100 ? content.substring(0, 100) + '...' : content;
         }
         return 'No summary available';

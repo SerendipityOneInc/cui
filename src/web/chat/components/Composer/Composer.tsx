@@ -11,6 +11,7 @@ import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { useAudioRecording } from '../../hooks/useAudioRecording';
 import { api } from '../../../chat/services/api';
 import { cn } from "../../lib/utils";
+import { SkillBrowserPopover } from '../Skills/SkillBrowserPopover';
 
 export interface FileSystemEntry {
   name: string;
@@ -352,6 +353,7 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
     type: 'file',
   });
   const [askUserAnswers, setAskUserAnswers] = useState<Record<string, string>>({});
+  const [isSkillBrowserOpen, setIsSkillBrowserOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   
@@ -927,6 +929,43 @@ export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer
                       selectedModel={selectedModel}
                       availableModels={availableModels}
                       onModelSelect={handleModelSelect}
+                    />
+                  )}
+
+                  {/* Skill Browser */}
+                  {onFetchCommands && (
+                    <SkillBrowserPopover
+                      commands={localCommands}
+                      isOpen={isSkillBrowserOpen}
+                      onOpenChange={setIsSkillBrowserOpen}
+                      onSelect={(commandName) => {
+                        const newText = value
+                          ? value.trimEnd() + ' ' + commandName + ' '
+                          : commandName + ' ';
+                        setValue(newText);
+                        setTimeout(() => {
+                          if (textareaRef.current) {
+                            textareaRef.current.focus();
+                            const pos = newText.length;
+                            textareaRef.current.setSelectionRange(pos, pos);
+                            adjustTextareaHeight();
+                          }
+                        }, 0);
+                      }}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-muted-foreground hover:bg-muted/50 rounded-full"
+                          aria-label="Browse skills"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Sparkles size={14} />
+                            <span className="hidden sm:inline text-xs">Skills</span>
+                          </span>
+                        </Button>
+                      }
                     />
                   )}
                 </div>

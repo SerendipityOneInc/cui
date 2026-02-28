@@ -12,6 +12,30 @@ export interface Command {
 const logger = createLogger('CommandsService');
 
 /**
+ * Parse YAML frontmatter from a .md file and extract the description field.
+ * Frontmatter format:
+ * ---
+ * name: foo
+ * description: some text
+ * ---
+ */
+function parseDescription(filePath: string): string | undefined {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (!match) return undefined;
+    const frontmatter = match[1];
+    // Match description: "..." or description: ...
+    const descMatch = frontmatter.match(/^description:\s*"([^"]*)"$/m)
+      || frontmatter.match(/^description:\s*'([^']*)'$/m)
+      || frontmatter.match(/^description:\s*(.+)$/m);
+    return descMatch ? descMatch[1].trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Scan a commands directory for .md files, including subdirectories.
  * Root-level: file.md → /file
  * Subdirectory: subdir/file.md → /subdir:file
@@ -23,7 +47,8 @@ function scanCommandsDir(dir: string, commands: Map<string, Command>): void {
     for (const entry of entries) {
       if (entry.isFile() && entry.name.endsWith('.md')) {
         const commandName = '/' + entry.name.slice(0, -3);
-        commands.set(commandName, { name: commandName, type: 'custom' });
+        const description = parseDescription(path.join(dir, entry.name));
+        commands.set(commandName, { name: commandName, type: 'custom', description });
       } else if (entry.isDirectory()) {
         // Scan subdirectory: subdir/file.md → /subdir:file
         const subDir = path.join(dir, entry.name);
@@ -32,7 +57,8 @@ function scanCommandsDir(dir: string, commands: Map<string, Command>): void {
           for (const subFile of subFiles) {
             if (subFile.endsWith('.md')) {
               const commandName = '/' + entry.name + ':' + subFile.slice(0, -3);
-              commands.set(commandName, { name: commandName, type: 'custom' });
+              const description = parseDescription(path.join(subDir, subFile));
+              commands.set(commandName, { name: commandName, type: 'custom', description });
             }
           }
         } catch (error) {
@@ -72,7 +98,8 @@ function scanSkillDirs(commands: Map<string, Command>): void {
           if (fs.existsSync(skillMd)) {
             const name = '/' + entry.name;
             if (!commands.has(name)) {
-              commands.set(name, { name, type: 'custom', description: 'skill' });
+              const description = parseDescription(skillMd);
+              commands.set(name, { name, type: 'custom', description: description || 'skill' });
             }
           }
         }
@@ -145,10 +172,12 @@ function scanSkillEntries(skillsDir: string, commands: Map<string, Command>): vo
     if (!fs.existsSync(skillsDir)) return;
     for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
-      if (fs.existsSync(path.join(skillsDir, entry.name, 'SKILL.md'))) {
+      const skillMdPath = path.join(skillsDir, entry.name, 'SKILL.md');
+      if (fs.existsSync(skillMdPath)) {
         const name = '/' + entry.name;
         if (!commands.has(name)) {
-          commands.set(name, { name, type: 'custom', description: 'skill' });
+          const description = parseDescription(skillMdPath);
+          commands.set(name, { name, type: 'custom', description: description || 'skill' });
         }
       }
     }
